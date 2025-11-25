@@ -1,0 +1,73 @@
+import argparse
+import sys
+from rich_argparse import RichHelpFormatter
+from rich.console import Console
+from .utils.status import error
+from .postgres import setup_postgres, manage_postgres
+from .redis import setup_redis, manage_redis
+from .otel import setup_otel
+from .gcloud import setup_gcloud
+
+console = Console()
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Termux Development Environment Setup Tool",
+        formatter_class=RichHelpFormatter
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # --- Setup Command ---
+    setup_parser = subparsers.add_parser("setup", help="Install and configure services", formatter_class=RichHelpFormatter)
+    setup_subparsers = setup_parser.add_subparsers(dest="service", help="Service to setup")
+
+    setup_subparsers.add_parser("postgres", help="Install and configure PostgreSQL", formatter_class=RichHelpFormatter)
+    setup_subparsers.add_parser("redis", help="Install and configure Redis", formatter_class=RichHelpFormatter)
+    setup_subparsers.add_parser("otel", help="Install OpenTelemetry Collector", formatter_class=RichHelpFormatter)
+    setup_subparsers.add_parser("gcloud", help="Install Google Cloud CLI", formatter_class=RichHelpFormatter)
+
+    # --- Manage Command ---
+    manage_parser = subparsers.add_parser("manage", help="Start/Stop/Status services", formatter_class=RichHelpFormatter)
+    manage_subparsers = manage_parser.add_subparsers(dest="service", help="Service to manage")
+
+    # Manage Postgres
+    pg_parser = manage_subparsers.add_parser("postgres", help="Manage PostgreSQL", formatter_class=RichHelpFormatter)
+    pg_parser.add_argument("action", choices=["start", "stop", "restart", "status"], help="Action to perform")
+
+    # Manage Redis
+    redis_parser = manage_subparsers.add_parser("redis", help="Manage Redis", formatter_class=RichHelpFormatter)
+    redis_parser.add_argument("action", choices=["start", "stop", "restart", "status"], help="Action to perform")
+
+    args = parser.parse_args()
+
+    try:
+        if args.command == "setup":
+            if args.service == "postgres":
+                setup_postgres()
+            elif args.service == "redis":
+                setup_redis()
+            elif args.service == "otel":
+                setup_otel()
+            elif args.service == "gcloud":
+                setup_gcloud()
+            else:
+                setup_parser.print_help()
+        
+        elif args.command == "manage":
+            if args.service == "postgres":
+                manage_postgres(args.action)
+            elif args.service == "redis":
+                manage_redis(args.action)
+            else:
+                manage_parser.print_help()
+        
+        else:
+            parser.print_help()
+            
+    except KeyboardInterrupt:
+        error("\nOperation cancelled by user.", exit_code=130)
+    except Exception as e:
+        error(f"Unexpected error: {e}", exit_code=1)
+
+if __name__ == "__main__":
+    main()
