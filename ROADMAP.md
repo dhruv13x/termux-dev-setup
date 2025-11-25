@@ -15,6 +15,7 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 - [ ] **Automated Testing**: Implement a robust testing framework (e.g., Pytest) to ensure stability.
 - [ ] **Configuration Validation**: Add validation for environment variables and command-line arguments.
 - [ ] **Improved Error Handling**: Provide more descriptive error messages to the user.
+- [ ] **Configuration File**: Implement a `tds.toml` file for easier management of settings.
 
 ---
 
@@ -22,11 +23,12 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 
 **Focus**: Feature parity with top competitors, user experience improvements, and robust error handling.
 
-- [ ] **Service Management**: Add `restart` commands for all services.
+- [x] **Service Management**: Add `restart` commands for all services.
 - [ ] **Interactive Setup**: Create an interactive mode for the `setup` command to guide users through the process.
 - [ ] **Version Management**: Allow users to specify versions for all services (e.g., `tds setup postgres --version 14`).
 - [ ] **Logging**: Implement logging to a file for easier debugging.
 - [ ] **Pre-flight Checks**: Add checks to ensure all dependencies are installed before starting a service.
+- [ ] **Health Checks**: Add `health` commands to verify that services are running correctly.
 
 ---
 
@@ -38,7 +40,8 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 - [ ] **Webhooks**: Add support for webhooks to notify users of service status changes.
 - [ ] **API Exposure**: Expose the functionality of the tool via a REST API.
 - [ ] **SDK Generation**: Generate SDKs for popular languages (e.g., Python, JavaScript) to interact with the API.
-- [ ] **Docker Integration**: Add support for managing services with Docker.
+- [ ] **Containerization Support**: Add support for managing services with `nerdctl` and `docker-compose`.
+- [ ] **Observability Stack**: Add a command to set up a complete observability stack (e.g., Prometheus, Grafana, Loki).
 
 ---
 
@@ -50,6 +53,7 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 - [ ] **Automated Performance Tuning**: Automatically tune service configurations for optimal performance.
 - [ ] **Cloud-Native Integration**: Integrate with cloud-native tools like Kubernetes and Helm.
 - [ ] **Distributed Tracing**: Add support for distributed tracing to monitor the performance of all services.
+- [ ] **Dynamic `docker-compose.yml` Generation**: Automatically generate `docker-compose.yml` files based on the user's project dependencies.
 
 ---
 
@@ -60,3 +64,4 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 - [ ] **Voice Control**: Add support for managing services with voice commands.
 - [ ] **Augmented Reality**: Create an AR interface to visualize the status of all services.
 - [ ] **Blockchain Integration**: Use blockchain to securely store service configurations.
+- [ ] **Web UI**: Add a web-based UI for managing services.
