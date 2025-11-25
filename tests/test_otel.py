@@ -10,10 +10,13 @@ from pathlib import Path
 @patch("termux_dev_setup.otel.tarfile.open")
 @patch("termux_dev_setup.otel.shutil.move")
 @patch("termux_dev_setup.otel.os.walk")
-def test_setup_otel_flow(mock_walk, mock_move, mock_tar, mock_url, mock_lock, mock_check, mock_run):
+@patch("pathlib.Path.chmod")
+def test_setup_otel_flow(
+    mock_chmod, mock_walk, mock_move, mock_tar, mock_url, mock_lock, mock_check, mock_run
+):
     # Mock Environment
     mock_check.return_value = True
-    
+
     # Mock os.walk to find the binary
     # Yields (root, dirs, files)
     mock_walk.return_value = [("/tmp/extracted", [], ["otelcol-contrib"])]
@@ -22,13 +25,16 @@ def test_setup_otel_flow(mock_walk, mock_move, mock_tar, mock_url, mock_lock, mo
     with patch("pathlib.Path.exists", return_value=False):
         with patch("builtins.open", mock_open()):
             setup_otel()
-    
+
     # Verify download was called
     mock_url.assert_called()
-    
+
     # Verify move was called
     mock_move.assert_called()
-    
+
+    # Verify chmod was called
+    mock_chmod.assert_called_with(0o755)
+
     # Verify config validate was called
     assert any("validate" in str(c) for c in mock_run.call_args_list)
 
