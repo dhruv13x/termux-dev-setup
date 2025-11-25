@@ -39,12 +39,15 @@ tds manage postgres start
 
 # Check the status
 tds manage postgres status
+
+# Restart the PostgreSQL server
+tds manage postgres restart
 ```
 
 ## ✨ Key Features
 
-- **PostgreSQL**: Install, configure, and manage (start/stop/status).
-- **Redis**: Install, configure, and manage (start/stop/status).
+- **PostgreSQL**: Install, configure, and manage (**start/stop/restart/status**).
+- **Redis**: Install, configure, and manage (**start/stop/restart/status**).
 - **OpenTelemetry**: Install and configure the OTEL Collector.
 - **Google Cloud CLI**: Install and configure `gcloud`.
 
@@ -71,8 +74,8 @@ tds manage postgres status
 | `tds setup redis`     | Install and configure Redis             |
 | `tds setup otel`      | Install OpenTelemetry Collector         |
 | `tds setup gcloud`    | Install Google Cloud CLI                |
-| `tds manage postgres [action]` | Manage PostgreSQL (start/stop/status) |
-| `tds manage redis [action]`    | Manage Redis (start/stop/status)    |
+| `tds manage postgres [action]` | Manage PostgreSQL (start/stop/restart/status) |
+| `tds manage redis [action]`    | Manage Redis (start/stop/restart/status)    |
 
 ## 🏗️ Architecture
 
@@ -98,9 +101,19 @@ The `tds` tool is a single-entrypoint CLI application. The `cli.py` module uses 
 
 ## 🗺️ Roadmap
 
-- [ ] Add support for more services (e.g., RabbitMQ, Elasticsearch)
-- [ ] Implement a configuration file for easier management of settings
-- [ ] Add more management commands (e.g., `logs`, `restart`)
+A high-level overview of our future plans. For a more detailed breakdown, please see our [ROADMAP.md](ROADMAP.md) file.
+
+### ✅ Completed
+
+- **Core Services**: PostgreSQL, Redis, OpenTelemetry, and Google Cloud CLI.
+- **Service Management**: Full lifecycle support (`start`, `stop`, `status`, and `restart`).
+
+### 🔮 Upcoming
+
+- **More Services**: Support for RabbitMQ, Elasticsearch, and other popular development tools.
+- **Enhanced Configuration**: A dedicated configuration file for easier management of settings.
+- **Interactive Mode**: A guided setup process for an improved user experience.
+- **Automated Testing**: A robust testing framework to ensure stability and reliability.
 
 ## 🤝 Contributing & License
 
