@@ -3,6 +3,7 @@ import sys
 from rich_argparse import RichHelpFormatter
 from rich.console import Console
 from .utils.status import error
+from .utils.banner import print_logo
 from .postgres import setup_postgres, manage_postgres
 from .redis import setup_redis, manage_redis
 from .otel import setup_otel
@@ -11,6 +12,7 @@ from .gcloud import setup_gcloud
 console = Console()
 
 def main():
+    print_logo()
     parser = argparse.ArgumentParser(
         description="Termux Development Environment Setup Tool",
         formatter_class=RichHelpFormatter
