@@ -28,6 +28,7 @@ def setup_otel():
     # 2. Check Prerequisites
     if not check_command("apt"):
         error("apt not found. Ensure you are inside an Ubuntu/Debian proot-distro.")
+        return
 
     if boot_flag.exists() and not force_update:
         success("Bootstrap already done (use OTEL_FORCE_UPDATE=1 to force).")
@@ -40,6 +41,7 @@ def setup_otel():
         run_command("apt install -y wget curl tar ca-certificates coreutils")
     except Exception:
         error("Failed to install dependencies.")
+        return
 
     # 4. Determine Architecture
     arch_map = {
@@ -73,6 +75,7 @@ def setup_otel():
                 urllib.request.urlretrieve(otel_url, tmp_path)
             except Exception as e:
                 error(f"Download failed: {e}", exit_code=4)
+                return
             
             # Checksum Verification
             if otel_sha256:
@@ -81,6 +84,7 @@ def setup_otel():
                     digest = hashlib.sha256(f.read()).hexdigest()
                 if digest != otel_sha256:
                     error(f"Checksum mismatch! Expected {otel_sha256}, got {digest}", exit_code=3)
+                    return
                 success("Checksum OK.")
             
             info("Extracting archive...")
@@ -89,6 +93,7 @@ def setup_otel():
                     tar.extractall(path=tmpd)
             except Exception as e:
                 error(f"Extraction failed: {e}", exit_code=5)
+                return
 
             # Find binary
             found = None
@@ -99,6 +104,7 @@ def setup_otel():
             
             if not found:
                  error(f"Could not locate {otel_bin_name} inside archive.")
+                 return
 
             shutil.move(str(found), str(otel_bin))
             otel_bin.chmod(0o755)

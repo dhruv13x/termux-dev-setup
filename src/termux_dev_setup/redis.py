@@ -61,6 +61,7 @@ def manage_redis(action: str):
         
         if not redis_conf.exists():
             error(f"Config file {redis_conf} not found. Run 'tds setup redis' first.")
+            return
             
         info(f"Starting Redis using {redis_conf}...")
         
@@ -88,6 +89,7 @@ def manage_redis(action: str):
             error("Redis failed to start (timeout).")
         except Exception as e:
             error(f"Failed to start Redis: {e}")
+            return
 
     elif action == "stop":
         if not is_port_open(port=redis_port):
@@ -110,6 +112,7 @@ def manage_redis(action: str):
             warning("Graceful stop failed.")
         except Exception as e:
             error(f"Error stopping Redis: {e}")
+            return
 
     elif action == "restart":
         manage_redis("stop")
@@ -160,6 +163,7 @@ def setup_redis():
             run_command("apt install -y redis-server")
         except Exception:
             error("Failed to install redis-server via apt.")
+            return
     else:
         info("redis-server is already installed.")
 
@@ -215,6 +219,7 @@ appendfilename "appendonly.aof"
             f.write(config_content)
     except IOError as e:
         error(f"Failed to write config file: {e}")
+        return
 
     # 6. Setup Log Directory
     run_command("mkdir -p /var/log/redis")

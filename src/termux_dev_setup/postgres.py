@@ -47,6 +47,7 @@ def manage_postgres(action: str):
     pg_bin = get_pg_bin()
     if not pg_bin:
         error("PostgreSQL binaries not found. Is it installed?")
+        return
 
     data_dir = os.environ.get("PG_DATA", DEFAULT_DATA_DIR)
     log_file = os.environ.get("PG_LOG", DEFAULT_LOG_FILE)
@@ -71,6 +72,7 @@ def manage_postgres(action: str):
             error("PostgreSQL failed to start (timeout). Check logs.")
         except Exception as e:
             error(f"Failed to start PostgreSQL: {e}")
+            return
 
     elif action == "stop":
         if not is_port_open():
@@ -114,6 +116,7 @@ def setup_postgres():
     # 1. Check Environment
     if not check_command("apt"):
         error("apt not found. Ensure you are inside an Ubuntu/Debian proot-distro.")
+        return
 
     # 2. Install Packages
     info("Checking/Installing PostgreSQL packages...")
@@ -122,11 +125,13 @@ def setup_postgres():
         run_command("apt install -y postgresql postgresql-contrib util-linux")
     except Exception:
         error("Failed to install PostgreSQL packages via apt.")
+        return
 
     # 3. Locate Binaries
     pg_bin = get_pg_bin()
     if not pg_bin:
          error("Failed to detect PostgreSQL installation after apt install.")
+         return
     
     pg_ver_dir = pg_bin.parent
     initdb_path = pg_bin / "initdb"
@@ -161,6 +166,7 @@ def setup_postgres():
              success("initdb finished.")
         except Exception:
              error("initdb failed.")
+             return
 
     # 6. Start Service (Reuse manage logic)
     # We temporarily set env vars for manage() to pick up if needed, 
