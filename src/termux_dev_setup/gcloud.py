@@ -13,6 +13,7 @@ def setup_gcloud():
     # 1. Check Environment
     if not check_command("apt-get"):
         error("apt-get not found. Ensure you are inside an Ubuntu/Debian proot-distro.")
+        return
 
     # 2. Install Prerequisites
     info("Installing prerequisites...")
@@ -21,6 +22,7 @@ def setup_gcloud():
         run_command("apt-get install -y apt-transport-https ca-certificates gnupg curl gnupg2 lsb-release")
     except Exception:
         error("Failed to install prerequisites.")
+        return
 
     # 3. Import Google Cloud Public Key
     info("Importing Google Cloud public key...")
@@ -32,6 +34,7 @@ def setup_gcloud():
         run_command(f"curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o {keyring_path} --yes", shell=True)
     except Exception:
         error("Failed to import Google Cloud key.")
+        return
 
     # 4. Add Repository
     info("Adding Google Cloud SDK repository...")
@@ -44,6 +47,7 @@ def setup_gcloud():
             f.write(repo_line + "\n")
     except IOError as e:
         error(f"Failed to write repo file: {e}")
+        return
 
     # 5. Install gcloud CLI
     info("Installing google-cloud-cli...")
@@ -52,6 +56,7 @@ def setup_gcloud():
         run_command("apt-get install -y google-cloud-cli")
     except Exception:
         error("Failed to install google-cloud-cli.")
+        return
 
     # 6. Verification & Init
     if check_command("gcloud"):
