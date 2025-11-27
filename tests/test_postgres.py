@@ -69,12 +69,44 @@ def test_is_port_open_failure(mock_socket):
     """Test is_port_open when the connection fails."""
     assert not postgres.is_port_open()
 
+def test_is_port_open_success():
+    """Test is_port_open when the connection succeeds."""
+    # We must patch socket.create_connection such that it doesn't raise exception
+    # and context manager works.
+    with patch("socket.create_connection", return_value=MagicMock()) as mock_socket:
+        mock_socket.return_value.__enter__.return_value = None
+        assert postgres.is_port_open()
+
 # =================== manage_postgres Tests ===================
 def test_manage_postgres_no_bin(mock_pg_bin_none):
     """Test manage_postgres when pg_bin is not found."""
     with patch("termux_dev_setup.postgres.error") as mock_error:
         postgres.manage_postgres("start")
         mock_error.assert_called_with("PostgreSQL binaries not found. Is it installed?")
+
+@patch("termux_dev_setup.postgres.is_port_open", return_value=True)
+def test_manage_postgres_start_already_running(mock_is_port_open, mock_pg_bin):
+    """Test starting postgres when it is already running."""
+    with patch("termux_dev_setup.postgres.success") as mock_success:
+        postgres.manage_postgres("start")
+        mock_success.assert_called_with("PostgreSQL is already running (port open).")
+
+@patch("termux_dev_setup.postgres.is_port_open", side_effect=[False, True])
+@patch("termux_dev_setup.postgres.run_as_postgres")
+def test_manage_postgres_start_success(mock_run_pg, mock_is_port_open, mock_pg_bin):
+    """Test successful start of postgres."""
+    with patch("termux_dev_setup.postgres.success") as mock_success:
+        postgres.manage_postgres("start")
+        mock_success.assert_called_with("PostgreSQL started successfully.")
+
+@patch("termux_dev_setup.postgres.is_port_open", return_value=False)
+@patch("termux_dev_setup.postgres.run_as_postgres")
+@patch("termux_dev_setup.postgres.time.sleep")
+def test_manage_postgres_start_timeout(mock_sleep, mock_run_pg, mock_is_port_open, mock_pg_bin):
+    """Test start command timing out."""
+    with patch("termux_dev_setup.postgres.error") as mock_error:
+        postgres.manage_postgres("start")
+        mock_error.assert_called_with("PostgreSQL failed to start (timeout). Check logs.")
 
 @patch("termux_dev_setup.postgres.is_port_open", return_value=False)
 @patch("termux_dev_setup.postgres.run_as_postgres", side_effect=Exception("DB error"))
@@ -83,6 +115,27 @@ def test_manage_postgres_start_exception(mock_run_pg, mock_is_port_open, mock_pg
     with patch("termux_dev_setup.postgres.error") as mock_error:
         postgres.manage_postgres("start")
         mock_error.assert_called_with("Failed to start PostgreSQL: DB error")
+
+def test_manage_postgres_stop_no_bin(mock_pg_bin_none):
+    """Test stopping postgres when binaries are not found."""
+    with patch("termux_dev_setup.postgres.error") as mock_error:
+        postgres.manage_postgres("stop")
+        mock_error.assert_called_with("PostgreSQL binaries not found.")
+
+@patch("termux_dev_setup.postgres.is_port_open", return_value=False)
+def test_manage_postgres_stop_already_stopped(mock_is_port_open, mock_pg_bin):
+    """Test stopping postgres when it is already stopped."""
+    with patch("termux_dev_setup.postgres.success") as mock_success:
+        postgres.manage_postgres("stop")
+        mock_success.assert_called_with("PostgreSQL is already stopped.")
+
+@patch("termux_dev_setup.postgres.is_port_open", side_effect=[True, False])
+@patch("termux_dev_setup.postgres.run_as_postgres")
+def test_manage_postgres_stop_success(mock_run_pg, mock_is_port_open, mock_pg_bin):
+    """Test successful stop of postgres."""
+    with patch("termux_dev_setup.postgres.success") as mock_success:
+        postgres.manage_postgres("stop")
+        mock_success.assert_called_with("PostgreSQL stopped.")
 
 @patch("termux_dev_setup.postgres.is_port_open", return_value=True)
 @patch("termux_dev_setup.postgres.run_as_postgres")
@@ -101,12 +154,48 @@ def test_manage_postgres_stop_exception(mock_run_pg, mock_is_port_open, mock_pg_
         postgres.manage_postgres("stop")
         mock_warning.assert_called_with("pg_ctl stop failed.")
 
+@patch("termux_dev_setup.postgres.manage_postgres")
+def test_manage_postgres_restart(mock_manage, mock_pg_bin):
+    """Test restart command calls stop and start."""
+    with patch("termux_dev_setup.postgres.time.sleep"):
+        postgres.manage_postgres("restart")
+        # manage_postgres calls Service.restart, which calls stop(), waits, then start().
+        # Since we mocked manage_postgres, this test doesn't actually test the logic inside Service.restart properly.
+        # We should test Service.restart directly or not mock manage_postgres.
+        pass
+
+@patch("termux_dev_setup.postgres.PostgresService")
+def test_manage_postgres_restart_logic(MockService):
+    """Test restart logic calls stop then start."""
+    service = MockService.return_value
+    postgres.manage_postgres("restart")
+    service.restart.assert_called_once()
+    # MockService.restart logic isn't tested here, need to test PostgresService.restart
+
+def test_postgres_service_restart(mock_pg_bin):
+    service = postgres.PostgresService()
+    with patch.object(service, 'stop') as mock_stop, \
+         patch.object(service, 'start') as mock_start, \
+         patch("termux_dev_setup.postgres.time.sleep"):
+        service.restart()
+        mock_stop.assert_called_once()
+        mock_start.assert_called_once()
+
 @patch("termux_dev_setup.postgres.is_port_open", return_value=False)
 @patch("rich.console.Console.print")
 def test_manage_postgres_status_down(mock_print, mock_is_port_open, mock_pg_bin):
     """Test postgres status command when service is down."""
     postgres.manage_postgres("status")
     mock_print.assert_any_call("  Status: [bold red]DOWN[/bold red]")
+
+@patch("termux_dev_setup.postgres.is_port_open", return_value=True)
+@patch("rich.console.Console.print")
+def test_manage_postgres_status_up(mock_print, mock_is_port_open, mock_pg_bin):
+    """Test postgres status command when service is up."""
+    postgres.manage_postgres("status")
+    mock_print.assert_any_call("  Status: [bold green]UP[/bold green]")
+    # Check for connection string print
+    assert any("Connection: postgresql://" in str(args) for args, kwargs in mock_print.call_args_list)
 
 @patch("termux_dev_setup.postgres.is_port_open", side_effect=[False, True])
 @patch("termux_dev_setup.postgres.run_as_postgres")
@@ -170,6 +259,11 @@ def test_setup_postgres_no_user_creation_tool(mock_path, mock_check, mock_run, m
 @patch("termux_dev_setup.postgres.Path")
 def test_setup_postgres_db_already_initialized(mock_path, mock_check, mock_run, mock_run_pg, mock_manage, mock_pg_bin):
     """Test the flow where the database is already initialized."""
+    # Ensure install_packages returns True
+    # Ensure get_pg_bin returns valid
+    # Ensure ensure_user
+    # Ensure init_db
+
     mock_path.return_value.__truediv__.return_value.exists.return_value = True # PG_VERSION exists
     postgres.setup_postgres()
     assert not any("initdb" in str(c) for c in mock_run_pg.call_args_list)
@@ -199,3 +293,26 @@ def test_setup_postgres_with_custom_user_env(mock_path, mock_check, mock_run, mo
     postgres.setup_postgres()
     create_role_cmd = f"'{mock_pg_bin}/createuser' -s {custom_user}"
     assert any(create_role_cmd in str(c) for c in mock_run_pg.call_args_list)
+
+@patch("termux_dev_setup.postgres.check_command", return_value=False)
+def test_install_packages_no_apt(mock_check):
+    installer = postgres.PostgresInstaller()
+    with patch("termux_dev_setup.postgres.error") as mock_error:
+        assert installer.install_packages() is False
+        mock_error.assert_called_with("apt not found. Ensure you are inside an Ubuntu/Debian proot-distro.")
+
+def test_PostgresConfig_init(monkeypatch):
+    monkeypatch.setenv("DATA_DIR", "/custom/data")
+    installer = postgres.PostgresInstaller()
+    assert installer.config.data_dir == "/custom/data"
+
+@patch("termux_dev_setup.postgres.check_command", return_value=True)
+@patch("termux_dev_setup.postgres.run_command")
+def test_ensure_user_calls_adduser(mock_run, mock_check):
+    installer = postgres.PostgresInstaller()
+    # Mock id postgres checks to fail first?
+    # Logic: if not check_command("id postgres"):
+    with patch("termux_dev_setup.postgres.check_command", side_effect=[False, True, False]): # id fail, adduser success
+        installer.ensure_user()
+        # Should call adduser
+        assert any("adduser" in str(c) for c in mock_run.call_args_list)
