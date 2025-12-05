@@ -77,7 +77,7 @@ tds manage postgres status
 
 - **PostgreSQL Management**: **God Level** control over your database. Install, configure, start, stop, and restart with ease.
 - **Redis Support**: Full lifecycle management for Redis, including password protection and persistence settings.
-- **OpenTelemetry Collector**: One-command setup for the latest OTEL collector to observe your applications.
+- **OpenTelemetry Management**: Full lifecycle management (start, stop, status) for the OTEL collector.
 - **Google Cloud CLI**: Seamless installation of `gcloud` to manage your GCP resources from your phone.
 - **Smart Validation**: Built-in checks for ports, configuration paths, and environment variables.
 - **Robust Error Handling**: informative error messages to help you debug setup issues quickly.
@@ -114,6 +114,7 @@ Customize your setup using Environment Variables. `tds` respects these variables
 | `tds setup gcloud` | Setup | Install Google Cloud CLI |
 | `tds manage postgres` | `start`, `stop`, `restart`, `status` | Control PostgreSQL Service |
 | `tds manage redis` | `start`, `stop`, `restart`, `status` | Control Redis Service |
+| `tds manage otel` | `start`, `stop`, `restart`, `status` | Control OpenTelemetry Collector |
 
 ## 🏗️ Architecture
 
