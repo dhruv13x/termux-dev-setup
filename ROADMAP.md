@@ -13,7 +13,7 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 - [x] **OpenTelemetry**: Install and configure the OTEL Collector.
 - [x] **Google Cloud CLI**: Install and configure `gcloud`.
 - [x] **Configuration Validation**: Validate ports, paths, and environment variables.
-- [ ] **OpenTelemetry Management**: Add service management (start/stop/status) for OTEL.
+- [x] **OpenTelemetry Management**: Add service management (start/stop/status) for OTEL.
 - [ ] **Robust Testing**: Expand test coverage beyond mocks to include integration tests.
 - [ ] **Improved Error Handling**: Implement specific exception types and user-friendly error hints.
 

@@ -89,3 +89,38 @@ class RedisConfig:
 
         if self.append_only not in ["yes", "no"]:
             raise ValueError("append_only must be 'yes' or 'no'")
+
+@dataclass
+class OtelConfig:
+    metrics_port: int = 8888
+    grpc_port: int = 4317
+    http_port: int = 4318
+    # Default to user's home/otel-config.yaml or similar if not specified
+    # Using HOME relative path logic requires os.path.expanduser which is better done in post_init or defaults
+    # For now we use a sensible default that the installer uses.
+    config_path: str = ""
+    otel_bin: str = ""
+    log_file: str = ""
+
+    def __post_init__(self):
+        base_dir = Path(os.environ.get("BASE_DIR", os.path.expanduser("~")))
+
+        if not self.config_path:
+            self.config_path = str(base_dir / "otel-config.yaml")
+        if not self.otel_bin:
+            self.otel_bin = str(base_dir / "otelcol-contrib")
+        if not self.log_file:
+            self.log_file = str(base_dir / "otel.log")
+
+        # Env overrides
+        self.metrics_port = validate_port(os.environ.get("OTEL_METRICS_PORT", self.metrics_port))
+        self.grpc_port = validate_port(os.environ.get("OTEL_GRPC_PORT", self.grpc_port))
+        self.http_port = validate_port(os.environ.get("OTEL_HTTP_PORT", self.http_port))
+
+        self.config_path = os.environ.get("OTEL_CONFIG", self.config_path)
+        self.otel_bin = os.environ.get("OTEL_BIN", self.otel_bin)
+        self.log_file = os.environ.get("OTEL_LOG", self.log_file)
+
+        self.config_path = validate_non_empty(self.config_path, "config_path")
+        self.otel_bin = validate_non_empty(self.otel_bin, "otel_bin")
+        self.log_file = validate_non_empty(self.log_file, "log_file")

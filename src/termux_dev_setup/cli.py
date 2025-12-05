@@ -6,7 +6,7 @@ from .utils.status import error
 from .utils.banner import print_logo
 from .postgres import setup_postgres, manage_postgres
 from .redis import setup_redis, manage_redis
-from .otel import setup_otel
+from .otel import setup_otel, manage_otel
 from .gcloud import setup_gcloud
 
 console = Console()
@@ -40,6 +40,10 @@ def main():
     redis_parser = manage_subparsers.add_parser("redis", help="Manage Redis", formatter_class=RichHelpFormatter)
     redis_parser.add_argument("action", choices=["start", "stop", "restart", "status"], help="Action to perform")
 
+    # Manage OpenTelemetry
+    otel_parser = manage_subparsers.add_parser("otel", help="Manage OpenTelemetry Collector", formatter_class=RichHelpFormatter)
+    otel_parser.add_argument("action", choices=["start", "stop", "restart", "status"], help="Action to perform")
+
     args = parser.parse_args()
 
     try:
@@ -60,6 +64,8 @@ def main():
                 manage_postgres(args.action)
             elif args.service == "redis":
                 manage_redis(args.action)
+            elif args.service == "otel":
+                manage_otel(args.action)
             else:
                 manage_parser.print_help()
         
