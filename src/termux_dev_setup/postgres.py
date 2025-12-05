@@ -1,38 +1,13 @@
-from .utils.status import console, info, success, error, warning, step
 from .utils.lock import process_lock
 from .utils.shell import run_command, check_command
 from .config import PostgresConfig
+from .views import PostgresView
+from .utils.network import is_port_open
+from .utils.postgres_utils import get_pg_bin, run_as_postgres
+from .service_status import ServiceStatus, ServiceResult
 import os
 import time
-import socket
 from pathlib import Path
-import shutil
-
-def get_pg_bin() -> Path:
-    """Detect PostgreSQL bin directory."""
-    try:
-        pg_lib = Path("/usr/lib/postgresql")
-        versions = sorted([d for d in pg_lib.iterdir() if d.is_dir() and d.name.isdigit()], key=lambda x: int(x.name))
-        if not versions:
-            return None
-        return versions[-1] / "bin"
-    except Exception:
-        return None
-
-def run_as_postgres(cmd, check=True, capture_output=False):
-    """Helper to run command as postgres user."""
-    if check_command("runuser"):
-        full_cmd = f"runuser -u postgres -- {cmd}"
-    else:
-        full_cmd = f"su - postgres -c \"{cmd}\""
-    return run_command(full_cmd, shell=True, check=check, capture_output=capture_output)
-
-def is_port_open(host="127.0.0.1", port=5432, timeout=0.5) -> bool:
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except Exception:
-        return False
 
 class PostgresService:
     def __init__(self, config: PostgresConfig = None):
@@ -42,16 +17,13 @@ class PostgresService:
     def is_running(self) -> bool:
         return is_port_open(self.config.host, self.config.port)
 
-    def start(self):
+    def start(self) -> ServiceResult:
         if not self.pg_bin:
-            error("PostgreSQL binaries not found. Is it installed?")
-            return
+            return ServiceResult(ServiceStatus.MISSING_BINARIES, "PostgreSQL binaries not found. Is it installed?")
 
         if self.is_running():
-            success("PostgreSQL is already running (port open).")
-            return
+            return ServiceResult(ServiceStatus.ALREADY_RUNNING, "PostgreSQL is already running (port open).")
 
-        info(f"Starting PostgreSQL from {self.config.data_dir}...")
         pg_ctl = self.pg_bin / "pg_ctl"
         cmd = f"'{pg_ctl}' -D '{self.config.data_dir}' -l '{self.config.log_file}' start"
 
@@ -60,99 +32,73 @@ class PostgresService:
             # Wait for readiness
             for _ in range(15):
                 if self.is_running():
-                    success("PostgreSQL started successfully.")
-                    return
+                    return ServiceResult(ServiceStatus.RUNNING, "PostgreSQL started successfully.")
                 time.sleep(1)
-            error("PostgreSQL failed to start (timeout). Check logs.")
+            return ServiceResult(ServiceStatus.TIMEOUT, "PostgreSQL failed to start (timeout). Check logs.")
         except Exception as e:
-            error(f"Failed to start PostgreSQL: {e}")
+            return ServiceResult(ServiceStatus.FAILED, f"Failed to start PostgreSQL: {e}")
 
-    def stop(self):
+    def stop(self) -> ServiceResult:
         if not self.pg_bin:
-             error("PostgreSQL binaries not found.")
-             return
+             return ServiceResult(ServiceStatus.MISSING_BINARIES, "PostgreSQL binaries not found.")
 
         if not self.is_running():
-            success("PostgreSQL is already stopped.")
-            return
+            return ServiceResult(ServiceStatus.ALREADY_STOPPED, "PostgreSQL is already stopped.")
 
-        info("Stopping PostgreSQL...")
         pg_ctl = self.pg_bin / "pg_ctl"
         cmd = f"'{pg_ctl}' -D '{self.config.data_dir}' stop"
         try:
             run_as_postgres(cmd)
             for _ in range(10):
                 if not self.is_running():
-                    success("PostgreSQL stopped.")
-                    return
+                    return ServiceResult(ServiceStatus.STOPPED, "PostgreSQL stopped.")
                 time.sleep(1)
-            warning("Graceful stop failed or timed out.")
+            return ServiceResult(ServiceStatus.TIMEOUT, "Graceful stop failed or timed out.")
         except Exception:
-             warning("pg_ctl stop failed.")
+             return ServiceResult(ServiceStatus.FAILED, "pg_ctl stop failed.")
 
     def restart(self):
-        self.stop()
+        stop_res = self.stop()
+        # If stop failed severely, maybe don't start? But usually restart tries best effort.
+        # Original logic was just stop() then sleep() then start().
         time.sleep(1)
-        self.start()
+        return self.start()
 
     def status(self):
-        up = self.is_running()
-        state = "[bold green]UP[/bold green]" if up else "[bold red]DOWN[/bold red]"
-        console.print(f"  Status: {state}")
-        console.print(f"  Data Dir: {self.config.data_dir}")
-        console.print(f"  Log File: {self.config.log_file}")
-        console.print(f"  Port: {self.config.port}")
-        if up:
-             console.print(f"  Connection: postgresql://{self.config.pg_user}:<PASS>@{self.config.host}:{self.config.port}/postgres")
-
-def manage_postgres(action: str):
-    """
-    Manage PostgreSQL service (start/stop/status/restart).
-    """
-    step(f"PostgreSQL {action.capitalize()}")
-
-    # Initialize service with config (implicitly handles env vars)
-    service = PostgresService()
-
-    if action == "start":
-        service.start()
-    elif action == "stop":
-        service.stop()
-    elif action == "restart":
-        service.restart()
-    elif action == "status":
-        service.status()
+        # Service just returns state, View handles display
+        pass
 
 class PostgresInstaller:
-    def __init__(self, config: PostgresConfig = None):
+    def __init__(self, config: PostgresConfig = None, view: PostgresView = None):
         self.config = config or PostgresConfig()
+        self.view = view or PostgresView()
         # Support legacy DATA_DIR env var for setup if needed
         if "DATA_DIR" in os.environ:
             self.config.data_dir = os.environ["DATA_DIR"]
 
     def install_packages(self) -> bool:
         if not check_command("apt"):
-            error("apt not found. Ensure you are inside an Ubuntu/Debian proot-distro.")
+            self.view.print_error("apt not found. Ensure you are inside an Ubuntu/Debian proot-distro.")
             return False
 
-        info("Checking/Installing PostgreSQL packages...")
+        self.view.print_info("Checking/Installing PostgreSQL packages...")
         run_command("apt update", check=False)
         try:
             run_command("apt install -y postgresql postgresql-contrib util-linux")
             return True
         except Exception:
-            error("Failed to install PostgreSQL packages via apt.")
+            self.view.print_error("Failed to install PostgreSQL packages via apt.")
             return False
 
     def ensure_user(self):
-        info("Ensuring 'postgres' user exists...")
+        self.view.print_info("Ensuring 'postgres' user exists...")
         if not check_command("id postgres"):
             if check_command("adduser"):
                 run_command("adduser --system --group --home /var/lib/postgresql --shell /bin/bash --no-create-home postgres", check=False)
             elif check_command("useradd"):
                 run_command("useradd -r -d /var/lib/postgresql -s /bin/bash -U postgres", check=False)
             else:
-                warning("Could not create postgres user. Proceeding if user exists.")
+                self.view.print_warning("Could not create postgres user. Proceeding if user exists.")
 
     def init_db(self, pg_bin: Path) -> bool:
         initdb_path = pg_bin / "initdb"
@@ -162,17 +108,17 @@ class PostgresInstaller:
         run_command(f"chown -R postgres:postgres {os.path.dirname(self.config.log_file)}")
 
         if (Path(self.config.data_dir) / "PG_VERSION").exists():
-            info(f"Database already initialized at {self.config.data_dir}")
+            self.view.print_info(f"Database already initialized at {self.config.data_dir}")
             return True
 
-        info(f"Initializing database at {self.config.data_dir}...")
+        self.view.print_info(f"Initializing database at {self.config.data_dir}...")
         cmd = f"'{initdb_path}' -D '{self.config.data_dir}'"
         try:
              run_as_postgres(cmd)
-             success("initdb finished.")
+             self.view.print_success("initdb finished.")
              return True
         except Exception:
-             error("initdb failed.")
+             self.view.print_error("initdb failed.")
              return False
 
     def setup_db_user(self, pg_bin: Path):
@@ -180,7 +126,7 @@ class PostgresInstaller:
         pg_user = os.environ.get("PG_USER", current_user)
         pg_db = os.environ.get("PG_DB", current_user)
 
-        info(f"Creating DB user '{pg_user}' and database '{pg_db}'...")
+        self.view.print_info(f"Creating DB user '{pg_user}' and database '{pg_db}'...")
 
         create_role_cmd = f"'{pg_bin}/createuser' -s {pg_user}"
         run_as_postgres(create_role_cmd, check=False)
@@ -190,50 +136,126 @@ class PostgresInstaller:
 
         return pg_user, pg_db
 
+class PostgresController:
+    def __init__(self, service: PostgresService = None, installer: PostgresInstaller = None, view: PostgresView = None):
+        self.view = view or PostgresView()
+        self.service = service or PostgresService()
+        self.installer = installer or PostgresInstaller(view=self.view)
+
+    def manage(self, action: str):
+        self.view.print_step(f"PostgreSQL {action.capitalize()}")
+
+        if action == "start":
+            self.view.print_info(f"Starting PostgreSQL from {self.service.config.data_dir}...")
+            result = self.service.start()
+            if result.status == ServiceStatus.RUNNING:
+                self.view.print_success(result.message)
+            elif result.status == ServiceStatus.ALREADY_RUNNING:
+                self.view.print_success(result.message)
+            elif result.status == ServiceStatus.MISSING_BINARIES:
+                self.view.print_error(result.message)
+            elif result.status in [ServiceStatus.TIMEOUT, ServiceStatus.FAILED]:
+                self.view.print_error(result.message)
+
+        elif action == "stop":
+            if not self.service.is_running() and self.service.pg_bin:
+                 pass
+            else:
+                 self.view.print_info("Stopping PostgreSQL...")
+
+            result = self.service.stop()
+            if result.status == ServiceStatus.STOPPED:
+                self.view.print_success(result.message)
+            elif result.status == ServiceStatus.ALREADY_STOPPED:
+                self.view.print_success(result.message)
+            elif result.status == ServiceStatus.MISSING_BINARIES:
+                self.view.print_error(result.message)
+            elif result.status in [ServiceStatus.TIMEOUT, ServiceStatus.FAILED]:
+                self.view.print_warning(result.message)
+
+        elif action == "restart":
+            self.view.print_info("Stopping PostgreSQL...")
+            stop_res = self.service.stop()
+            if stop_res.status == ServiceStatus.STOPPED:
+                 self.view.print_success(stop_res.message)
+            elif stop_res.status == ServiceStatus.ALREADY_STOPPED:
+                 self.view.print_success(stop_res.message)
+            else:
+                 self.view.print_warning(stop_res.message)
+
+            time.sleep(1)
+
+            self.view.print_info(f"Starting PostgreSQL from {self.service.config.data_dir}...")
+            start_res = self.service.start()
+            if start_res.status == ServiceStatus.RUNNING:
+                 self.view.print_success(start_res.message)
+            elif start_res.status == ServiceStatus.ALREADY_RUNNING:
+                 self.view.print_success(start_res.message)
+            else:
+                 self.view.print_error(start_res.message)
+
+        elif action == "status":
+            self.view.print_status(self.service.is_running(), self.service.config)
+
+    def setup(self):
+        self.view.print_step("PostgreSQL Setup")
+
+        # 1. Install
+        if not self.installer.install_packages():
+            return
+
+        # 2. Locate Binaries
+        # Re-initialize service/pg_bin detection since it might have been installed just now
+        self.service.pg_bin = get_pg_bin()
+        pg_bin = self.service.pg_bin
+
+        if not pg_bin:
+             self.view.print_error("Failed to detect PostgreSQL installation after apt install.")
+             return
+
+        pg_ver_dir = pg_bin.parent
+        self.view.print_info(f"Detected PostgreSQL version: {pg_ver_dir.name}")
+
+        # 3. Setup User
+        self.installer.ensure_user()
+
+        # 4. Init DB
+        if not self.installer.init_db(pg_bin):
+            return
+
+        # 5. Start Service
+        # Pass state via env vars for now as manage() uses Service which reads config which reads env
+        # A cleaner way would be to pass config to manage(), but manage() currently instantiates its own service.
+        # Since we are inside the controller, we can just call manage directly on self.
+        os.environ["PG_DATA"] = self.installer.config.data_dir
+        os.environ["PG_LOG"] = self.installer.config.log_file
+
+        # We need to update the service config because manage() uses self.service
+        # But PostgresConfig loads from env at init.
+        # We can re-init the service or update config manually.
+        self.service.config = PostgresConfig() # Re-load config with new env vars
+        self.manage("start")
+
+        # 6. Create DB User
+        pg_user, pg_db = self.installer.setup_db_user(pg_bin)
+
+        self.view.print_step("Summary")
+        self.view.print_status(True, self.installer.config)
+
+
+def manage_postgres(action: str):
+    """
+    Manage PostgreSQL service (start/stop/status/restart).
+    """
+    controller = PostgresController()
+    controller.manage(action)
+
 def setup_postgres():
     """
     Install and configure PostgreSQL for Termux/Proot (Ubuntu).
     """
-    step("PostgreSQL Setup")
-
-    installer = PostgresInstaller()
-
-    # 1. Install
-    if not installer.install_packages():
-        return
-
-    # 2. Locate Binaries
-    pg_bin = get_pg_bin()
-    if not pg_bin:
-         error("Failed to detect PostgreSQL installation after apt install.")
-         return
-    
-    pg_ver_dir = pg_bin.parent
-    info(f"Detected PostgreSQL version: {pg_ver_dir.name}")
-
-    # 3. Setup User
-    installer.ensure_user()
-
-    # 4. Init DB
-    if not installer.init_db(pg_bin):
-        return
-
-    # 5. Start Service
-    # We rely on the Service class now, but need to make sure env vars are respected if set
-    # manage_postgres() creates a new service, which creates a new config.
-    # To pass state, we might need to rely on env vars or refactor manage_postgres further.
-    # For now, sticking to the facade pattern:
-    os.environ["PG_DATA"] = installer.config.data_dir
-    os.environ["PG_LOG"] = installer.config.log_file
-    manage_postgres("start")
-
-    # 6. Create DB User
-    pg_user, pg_db = installer.setup_db_user(pg_bin)
-
-    step("Summary")
-    console.print(f"  Version: {pg_ver_dir.name}")
-    console.print(f"  Data Dir: {installer.config.data_dir}")
-    console.print(f"  Connection: postgresql://{pg_user}:<PASSWORD>@127.0.0.1:{installer.config.port}/{pg_db}")
+    controller = PostgresController()
+    controller.setup()
     
 if __name__ == "__main__":
     with process_lock("postgres_setup"):
