@@ -13,7 +13,7 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 - [x] **OpenTelemetry**: Install and configure the OTEL Collector.
 - [x] **Google Cloud CLI**: Install and configure `gcloud`.
 - [ ] **Automated Testing**: Implement a robust testing framework (e.g., Pytest) to ensure stability.
-- [ ] **Configuration Validation**: Add validation for environment variables and command-line arguments.
+- [x] **Configuration Validation**: Add validation for environment variables and command-line arguments.
 - [ ] **Improved Error Handling**: Provide more descriptive error messages to the user.
 - [ ] **Configuration File**: Implement a `tds.toml` file for easier management of settings.
 
