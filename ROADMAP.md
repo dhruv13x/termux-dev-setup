@@ -4,44 +4,46 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 
 ---
 
-## Phase 1: Foundation (Q1)
+## Phase 1: Foundation (CRITICALLY MUST HAVE) (Q1)
 
 **Focus**: Core functionality, stability, security, and basic usage.
 
-- [x] **PostgreSQL**: Install, configure, and manage (start/stop/status).
-- [x] **Redis**: Install, configure, and manage (start/stop/status).
+- [x] **PostgreSQL**: Install, configure, and manage (start/stop/restart/status).
+- [x] **Redis**: Install, configure, and manage (start/stop/restart/status).
 - [x] **OpenTelemetry**: Install and configure the OTEL Collector.
 - [x] **Google Cloud CLI**: Install and configure `gcloud`.
-- [ ] **Automated Testing**: Implement a robust testing framework (e.g., Pytest) to ensure stability.
-- [x] **Configuration Validation**: Add validation for environment variables and command-line arguments.
-- [ ] **Improved Error Handling**: Provide more descriptive error messages to the user.
-- [ ] **Configuration File**: Implement a `tds.toml` file for easier management of settings.
+- [x] **Configuration Validation**: Validate ports, paths, and environment variables.
+- [ ] **OpenTelemetry Management**: Add service management (start/stop/status) for OTEL.
+- [ ] **Robust Testing**: Expand test coverage beyond mocks to include integration tests.
+- [ ] **Improved Error Handling**: Implement specific exception types and user-friendly error hints.
 
 ---
 
-## Phase 2: The Standard (Q2)
+## Phase 2: The Standard (MUST HAVE) (Q2)
 
 **Focus**: Feature parity with top competitors, user experience improvements, and robust error handling.
 
-- [x] **Service Management**: Add `restart` commands for all services.
-- [ ] **Interactive Setup**: Create an interactive mode for the `setup` command to guide users through the process.
-- [ ] **Version Management**: Allow users to specify versions for all services (e.g., `tds setup postgres --version 14`).
-- [ ] **Logging**: Implement logging to a file for easier debugging.
-- [ ] **Pre-flight Checks**: Add checks to ensure all dependencies are installed before starting a service.
-- [ ] **Health Checks**: Add `health` commands to verify that services are running correctly.
+- [ ] **Interactive Setup**: Wizard-style CLI prompts (e.g., using `rich` or `questionary`) to guide users.
+- [ ] **Version Management**: CLI flags to specify service versions (e.g., `tds setup postgres --version 15`).
+- [ ] **System Health Checks**: `tds doctor` command to verify environment health (disk, ports, dependencies).
+- [ ] **Unified Logging**: Centralized log management for `tds` operations.
+- [ ] **Configuration File**: Support `tds.toml` for persistent, project-level configuration.
+- [ ] **Pre-flight Checks**: Verify prerequisites before attempting installation or start.
 
 ---
 
-## Phase 3: The Ecosystem (Q3)
+## Phase 3: The Ecosystem (INTEGRATION & SHOULD HAVE) (Q3)
 
 **Focus**: Webhooks, API exposure, 3rd party plugins, SDK generation, and extensibility.
 
-- [ ] **Plugin Architecture**: Create a plugin system to allow users to add their own services.
-- [ ] **Webhooks**: Add support for webhooks to notify users of service status changes.
-- [ ] **API Exposure**: Expose the functionality of the tool via a REST API.
-- [ ] **SDK Generation**: Generate SDKs for popular languages (e.g., Python, JavaScript) to interact with the API.
-- [ ] **Containerization Support**: Add support for managing services with `nerdctl` and `docker-compose`.
-- [ ] **Observability Stack**: Add a command to set up a complete observability stack (e.g., Prometheus, Grafana, Loki).
+- [ ] **Plugin Architecture**: Hook system to allow community-driven extensions.
+- [ ] **Database Integrations**: Support for MySQL/MariaDB, SQLite, and MongoDB.
+- [ ] **Language Runtimes**: Setup environments for Node.js, Go, Rust, and Python.
+- [ ] **Editor Configuration**: Automatic setup for Neovim (e.g., LazyVim), Emacs, or VS Code Server.
+- [ ] **Dotfiles Integration**: Sync or apply dotfiles from a remote Git repository.
+- [ ] **Containerization Support**: Management for `nerdctl`/`podman` and `docker-compose`.
+- [ ] **Observability Stack**: One-command setup for Prometheus, Grafana, and Loki.
+- [ ] **API Exposure**: Expose `tds` functionality via a local REST API.
 
 ---
 
@@ -49,11 +51,12 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 
 **Focus**: "Futuristic" features, AI integration, advanced automation, and industry-disrupting capabilities.
 
-- [ ] **AI-Powered Recommendations**: Use AI to recommend services and configurations based on the user's codebase.
-- [ ] **Automated Performance Tuning**: Automatically tune service configurations for optimal performance.
-- [ ] **Cloud-Native Integration**: Integrate with cloud-native tools like Kubernetes and Helm.
-- [ ] **Distributed Tracing**: Add support for distributed tracing to monitor the performance of all services.
-- [ ] **Dynamic `docker-compose.yml` Generation**: Automatically generate `docker-compose.yml` files based on the user's project dependencies.
+- [ ] **AI-Powered Tuning**: Analyze resource usage and auto-tune Postgres/Redis configurations.
+- [ ] **Dev Environment as Code**: Export the current machine state to a shareable `tds.yaml` or `Dockerfile`.
+- [ ] **Remote Tunnels**: Securely expose local services to the internet (integrated tunneling).
+- [ ] **Cloud-Native Integration**: Deploy the local setup directly to Kubernetes or Cloud Run.
+- [ ] **Self-Healing Services**: Daemon that monitors services and auto-restarts them upon failure.
+- [ ] **Dynamic `docker-compose`**: Generate compose files based on project dependencies.
 
 ---
 
@@ -61,7 +64,8 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 
 **Focus**: Wild, creative, experimental ideas that set the project apart.
 
-- [ ] **Voice Control**: Add support for managing services with voice commands.
-- [ ] **Augmented Reality**: Create an AR interface to visualize the status of all services.
-- [ ] **Blockchain Integration**: Use blockchain to securely store service configurations.
-- [ ] **Web UI**: Add a web-based UI for managing services.
+- [ ] **Gamified Coding**: XP system for service uptime or successful deployments.
+- [ ] **Voice Control**: "Hey Termux, deploy DB" (Voice-to-CLI interface).
+- [ ] **Panic Button**: Single command to securely wipe sensitive data and kill all sessions.
+- [ ] **Blockchain Config**: Store immutable configuration hashes on-chain.
+- [ ] **Augmented Reality**: AR interface to visualize service status overlaid on the terminal.
