@@ -66,14 +66,18 @@ def test_keyboard_interrupt():
     from termux_dev_setup.cli import setup_postgres
     setup_postgres.side_effect = KeyboardInterrupt
     with patch('sys.argv', ['tds', 'setup', 'postgres']), \
-         patch('termux_dev_setup.cli.error') as mock_error:
-        main()
-        mock_error.assert_called_with("\nOperation cancelled by user.", exit_code=130)
+         patch('rich.console.Console.print') as mock_print:
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 130
+        mock_print.assert_called_with("\n[error]✖  Operation cancelled by user.[/error]")
 
 def test_generic_exception():
     from termux_dev_setup.cli import setup_gcloud
     setup_gcloud.side_effect = Exception("Something broke")
     with patch('sys.argv', ['tds', 'setup', 'gcloud']), \
-         patch('termux_dev_setup.cli.error') as mock_error:
-        main()
-        mock_error.assert_called_with("Unexpected error: Something broke", exit_code=1)
+         patch('rich.console.Console.print') as mock_print:
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+        mock_print.assert_called_with("[error]✖  Unexpected error: Something broke[/error]")

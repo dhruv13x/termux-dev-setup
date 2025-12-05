@@ -5,6 +5,7 @@ from termux_dev_setup.utils.banner import print_logo
 from termux_dev_setup.utils.lock import process_lock
 from termux_dev_setup.utils.shell import run_command, check_command
 from termux_dev_setup.utils.status import info, success, error, warning, step
+from termux_dev_setup.errors import TDSError
 
 # =================== banner.py Tests ===================
 @patch('rich.console.Console.print')
@@ -42,7 +43,7 @@ def test_process_lock():
 def test_process_lock_already_locked(mock_lockf):
     """Test that the process_lock context manager exits when the lock is already held."""
     mock_lockf.side_effect = [IOError, None]  # First call raises IOError, second call in finally block does nothing
-    with pytest.raises(SystemExit):
+    with pytest.raises(TDSError):
         with process_lock('test'):
             pass
 
@@ -65,12 +66,12 @@ def test_run_command_capture_output(mock_run):
 
 @patch('subprocess.run', side_effect=subprocess.CalledProcessError(1, 'ls -l', 'error'))
 def test_run_command_failure(mock_run):
-    with pytest.raises(SystemExit):
+    with pytest.raises(TDSError):
         run_command('ls -l')
 
 @patch('subprocess.run', side_effect=FileNotFoundError)
 def test_run_command_file_not_found(mock_run):
-    with pytest.raises(SystemExit):
+    with pytest.raises(TDSError):
         run_command('nonexistent_command')
 
 @patch('shutil.which', return_value='/usr/bin/ls')
@@ -94,7 +95,7 @@ def test_success(mock_print):
 
 @patch('rich.console.Console.print')
 def test_error(mock_print):
-    with pytest.raises(SystemExit):
+    with pytest.raises(TDSError):
         error('test message')
     mock_print.assert_called_once_with('[error]✖  test message[/error]')
 
