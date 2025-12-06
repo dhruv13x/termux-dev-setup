@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from termux_dev_setup.cli import main
+from termux_dev_setup.errors import TDSError
 
 # =================== Mocks for all dispatched functions ===================
 @pytest.fixture(autouse=True)
@@ -11,23 +12,27 @@ def mock_commands(monkeypatch):
     monkeypatch.setattr("termux_dev_setup.cli.setup_redis", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.manage_redis", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.setup_otel", MagicMock())
+    monkeypatch.setattr("termux_dev_setup.cli.manage_otel", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.setup_gcloud", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.print_logo", MagicMock())
 
 # =================== Help and No-Command Tests ===================
 def test_main_no_args():
+    """Test that main prints help when no arguments are provided."""
     with patch('sys.argv', ['tds']), \
          patch('argparse.ArgumentParser.print_help') as mock_print_help:
         main()
         mock_print_help.assert_called_once()
 
 def test_setup_no_service():
+    """Test that setup command prints help when no service is specified."""
     with patch('sys.argv', ['tds', 'setup']), \
          patch('argparse.ArgumentParser.print_help') as mock_print_help:
         main()
         mock_print_help.assert_called_once()
 
 def test_manage_no_service():
+    """Test that manage command prints help when no service is specified."""
     with patch('sys.argv', ['tds', 'manage']), \
          patch('argparse.ArgumentParser.print_help') as mock_print_help:
         main()
@@ -61,6 +66,13 @@ def test_manage_redis_commands(action):
         main()
         manage_redis.assert_called_with(action)
 
+@pytest.mark.parametrize("action", ["start", "stop", "restart", "status"])
+def test_manage_otel_commands(action):
+    from termux_dev_setup.cli import manage_otel
+    with patch('sys.argv', ['tds', 'manage', 'otel', action]):
+        main()
+        manage_otel.assert_called_with(action)
+
 # =================== Exception Handling Tests ===================
 def test_keyboard_interrupt():
     from termux_dev_setup.cli import setup_postgres
@@ -81,3 +93,11 @@ def test_generic_exception():
             main()
         assert excinfo.value.code == 1
         mock_print.assert_called_with("[error]✖  Unexpected error: Something broke[/error]")
+
+def test_tds_error_exception():
+    from termux_dev_setup.cli import setup_gcloud
+    setup_gcloud.side_effect = TDSError("Fatal error", exit_code=99)
+    with patch('sys.argv', ['tds', 'setup', 'gcloud']):
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 99

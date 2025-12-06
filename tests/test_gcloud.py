@@ -44,6 +44,19 @@ def test_setup_gcloud_success():
         mock_check_command.assert_any_call("gcloud")
         mock_run_command.assert_any_call("gcloud --version", check=False)
 
+def test_setup_gcloud_with_version():
+    """
+    Tests installation with a specific version.
+    """
+    with patch("termux_dev_setup.gcloud.check_command", side_effect=[True, True]), \
+         patch("termux_dev_setup.gcloud.run_command") as mock_run_command, \
+         patch("builtins.open", mock_open()):
+
+        gcloud.setup_gcloud(version="1.2.3")
+
+        # Verify installation calls with version
+        mock_run_command.assert_any_call("apt-get install -y google-cloud-cli=1.2.3-*")
+
 def test_setup_gcloud_no_apt():
     """
     Tests that setup fails if apt-get is not found.

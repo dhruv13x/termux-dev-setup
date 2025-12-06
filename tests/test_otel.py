@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 from termux_dev_setup import otel
+from termux_dev_setup.config import OtelConfig
 import os
 import shutil
 
@@ -162,3 +163,144 @@ def test_setup_otel_validation_fails(mock_chmod, mock_run, mock_check, mock_env,
 
         otel.setup_otel()
         mock_error.assert_called_with("Config validation failed", exit_code=6)
+
+# --- Service Management Tests ---
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=True)
+def test_manage_otel_start_already_running(mock_port, mock_env):
+    with patch("termux_dev_setup.otel.success") as mock_success:
+        otel.manage_otel("start")
+        mock_success.assert_called_with(f"OpenTelemetry Collector is already running (port 8888).")
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=False)
+def test_manage_otel_start_no_bin(mock_port, mock_env):
+    # Ensure binary does not exist
+    if (mock_env / "otelcol-contrib").exists():
+        (mock_env / "otelcol-contrib").unlink()
+
+    with patch("termux_dev_setup.otel.error") as mock_error:
+        otel.manage_otel("start")
+        assert "Binary" in mock_error.call_args[0][0]
+        assert "not found" in mock_error.call_args[0][0]
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=False)
+def test_manage_otel_start_no_config(mock_port, mock_env):
+    (mock_env / "otelcol-contrib").touch()
+    if (mock_env / "otel-config.yaml").exists():
+        (mock_env / "otel-config.yaml").unlink()
+
+    with patch("termux_dev_setup.otel.error") as mock_error:
+        otel.manage_otel("start")
+        assert "Config" in mock_error.call_args[0][0]
+        assert "not found" in mock_error.call_args[0][0]
+
+@patch("termux_dev_setup.otel.is_port_open")
+@patch("termux_dev_setup.otel.run_command")
+def test_manage_otel_start_success(mock_run, mock_port, mock_env):
+    (mock_env / "otelcol-contrib").touch()
+    (mock_env / "otel-config.yaml").touch()
+
+    # is_port_open sequence: False (initially), True (after start)
+    mock_port.side_effect = [False, True]
+
+    with patch("termux_dev_setup.otel.success") as mock_success:
+        otel.manage_otel("start")
+        mock_success.assert_called_with("OpenTelemetry Collector started successfully.")
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=False)
+@patch("termux_dev_setup.otel.run_command")
+def test_manage_otel_start_timeout(mock_run, mock_port, mock_env):
+    (mock_env / "otelcol-contrib").touch()
+    (mock_env / "otel-config.yaml").touch()
+
+    with patch("termux_dev_setup.otel.error") as mock_error, \
+         patch("time.sleep"):
+        otel.manage_otel("start")
+        mock_error.assert_called_with("OpenTelemetry Collector failed to start (timeout). Check logs.")
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=False)
+def test_manage_otel_stop_already_stopped(mock_port, mock_env):
+    with patch("termux_dev_setup.otel.success") as mock_success:
+        otel.manage_otel("stop")
+        mock_success.assert_called_with("OpenTelemetry Collector stopped.")
+
+@patch("termux_dev_setup.otel.is_port_open")
+@patch("termux_dev_setup.otel.run_command")
+def test_manage_otel_stop_success(mock_run, mock_port, mock_env):
+    # is_port_open sequence: True (initially), False (after pkill)
+    mock_port.side_effect = [True, False]
+
+    with patch("termux_dev_setup.otel.success") as mock_success:
+        otel.manage_otel("stop")
+        mock_success.assert_called_with("OpenTelemetry Collector stopped.")
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=True)
+@patch("termux_dev_setup.otel.run_command")
+def test_manage_otel_stop_force_kill(mock_run, mock_port, mock_env):
+    # is_port_open returns True initially, then True 10 times (timeout loop), then False (after force kill)
+    mock_port.side_effect = [True] + [True]*10 + [False]
+
+    with patch("termux_dev_setup.otel.success") as mock_success, \
+         patch("time.sleep"):
+        otel.manage_otel("stop")
+        mock_success.assert_called_with("OpenTelemetry Collector stopped (force kill).")
+
+@patch("termux_dev_setup.otel.OtelService.stop")
+@patch("termux_dev_setup.otel.OtelService.start")
+def test_manage_otel_restart(mock_start, mock_stop, mock_env):
+    with patch("time.sleep"):
+        otel.manage_otel("restart")
+        mock_stop.assert_called_once()
+        mock_start.assert_called_once()
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=True)
+def test_manage_otel_status(mock_port, mock_env):
+    with patch("termux_dev_setup.otel.console.print") as mock_print:
+        otel.manage_otel("status")
+        mock_print.assert_any_call("  Status: [bold green]UP[/bold green]")
+
+@patch("termux_dev_setup.otel.socket.create_connection")
+def test_is_port_open_true(mock_socket):
+    assert otel.is_port_open(80)
+
+@patch("termux_dev_setup.otel.socket.create_connection", side_effect=Exception)
+def test_is_port_open_false(mock_socket):
+    assert not otel.is_port_open(80)
+
+def test_manage_otel_generate_config_write_fails(mock_env):
+    installer = otel.OtelInstaller()
+    with patch("builtins.open", side_effect=IOError("Write failed")), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        assert installer.generate_config() == False
+        mock_error.assert_called()
+
+def test_manage_otel_start_exception(mock_env):
+    service = otel.OtelService()
+    (mock_env / "otelcol-contrib").touch()
+    (mock_env / "otel-config.yaml").touch()
+
+    with patch("termux_dev_setup.otel.is_port_open", return_value=False), \
+         patch("termux_dev_setup.otel.run_command", side_effect=Exception("Start failed")), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        service.start()
+        mock_error.assert_called_with("Failed to start OTEL: Start failed")
+
+def test_manage_otel_stop_exception(mock_env):
+    service = otel.OtelService()
+
+    with patch("termux_dev_setup.otel.is_port_open", return_value=True), \
+         patch("termux_dev_setup.otel.run_command", side_effect=Exception("Stop failed")), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        service.stop()
+        mock_error.assert_called_with("Error stopping OTEL: Stop failed")
+
+@patch("termux_dev_setup.otel.is_port_open", return_value=True)
+@patch("termux_dev_setup.otel.run_command")
+def test_manage_otel_stop_force_kill_fails(mock_run, mock_port, mock_env):
+    # Always True means even force kill didn't work
+    mock_port.side_effect = [True] + [True]*10 + [True]
+
+    with patch("termux_dev_setup.otel.warning") as mock_warning, \
+         patch("time.sleep"):
+        otel.manage_otel("stop")
+        mock_warning.assert_called_with("Failed to stop OpenTelemetry Collector.")

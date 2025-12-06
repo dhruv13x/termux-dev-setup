@@ -357,3 +357,18 @@ def test_ensure_user_calls_adduser(mock_run, mock_check):
         installer.ensure_user()
         # Should call adduser
         assert any("adduser" in str(c) for c in mock_run.call_args_list)
+
+def test_manage_postgres_controller_methods(mock_pg_bin, mock_view):
+    """Coverage for controller methods."""
+    controller = postgres.PostgresController()
+    with patch.object(controller.service, 'is_running', return_value=True):
+        controller.manage("status")
+        mock_view.print_status.assert_called()
+
+    with patch.object(controller.service, 'start', return_value=MagicMock(status=ServiceStatus.RUNNING)):
+         controller.manage("start")
+         mock_view.print_success.assert_called()
+
+    with patch.object(controller.service, 'stop', return_value=MagicMock(status=ServiceStatus.STOPPED)):
+         controller.manage("stop")
+         mock_view.print_success.assert_called()

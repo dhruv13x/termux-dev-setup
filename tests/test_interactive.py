@@ -2,15 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from termux_dev_setup import interactive, cli
 
-@pytest.fixture
-def mock_prompt():
-    with patch("termux_dev_setup.interactive.Prompt.ask") as mock_ask:
-        yield mock_ask
-
-@pytest.fixture
-def mock_confirm():
-    with patch("termux_dev_setup.interactive.Confirm.ask") as mock_ask:
-        yield mock_ask
+# Fixtures mock_prompt and mock_confirm are now in conftest.py
 
 def test_interactive_setup_wizard_selection(mock_prompt):
     """Test that the wizard asks for a service and returns the selection."""
@@ -44,7 +36,32 @@ def test_cli_interactive_mode(mock_prompt, mock_confirm):
             mock_wizard.assert_called_once()
             mock_run_setup.assert_called_with("postgres")
 
-def test_interactive_service_actions(mock_prompt):
-    """Test that the wizard allows selecting actions for a service."""
-    # This might require a more complex mock sequence if we implement a multi-step wizard
-    pass
+@pytest.mark.parametrize("service_name, setup_func_name", [
+    ("postgres", "setup_postgres"),
+    ("redis", "setup_redis"),
+    ("otel", "setup_otel"),
+    ("gcloud", "setup_gcloud"),
+])
+def test_run_service_setup_confirmed(service_name, setup_func_name, mock_confirm):
+    """Test that selecting a service and confirming runs the setup."""
+    mock_confirm.return_value = True
+
+    with patch(f"termux_dev_setup.interactive.{setup_func_name}") as mock_setup:
+        interactive.run_service_setup(service_name)
+        mock_confirm.assert_called_once()
+        mock_setup.assert_called_once()
+
+@pytest.mark.parametrize("service_name, setup_func_name", [
+    ("postgres", "setup_postgres"),
+    ("redis", "setup_redis"),
+    ("otel", "setup_otel"),
+    ("gcloud", "setup_gcloud"),
+])
+def test_run_service_setup_declined(service_name, setup_func_name, mock_confirm):
+    """Test that declining the setup does NOT run the setup."""
+    mock_confirm.return_value = False
+
+    with patch(f"termux_dev_setup.interactive.{setup_func_name}") as mock_setup:
+        interactive.run_service_setup(service_name)
+        mock_confirm.assert_called_once()
+        mock_setup.assert_not_called()
