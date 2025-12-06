@@ -250,7 +250,7 @@ def test_postgres_service_stop_already_stopped(mock_is_port_open, mock_pg_bin):
 def test_setup_postgres_apt_install_fails(mock_check, mock_run, mock_view):
     """Test setup failure if 'apt install' fails."""
     postgres.setup_postgres()
-    mock_view.print_error.assert_called_with("Failed to install PostgreSQL packages via apt.")
+    mock_view.print_error.assert_called_with("Failed to install postgresql packages via apt.")
 
 @patch("termux_dev_setup.postgres.run_command")
 @patch("termux_dev_setup.postgres.check_command", return_value=True)

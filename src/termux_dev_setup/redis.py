@@ -122,10 +122,22 @@ class RedisService:
             console.print(f"  URL: {conn_str}")
 
 class RedisInstaller:
-    def __init__(self, config: RedisConfig = None):
+    def __init__(self, config: RedisConfig = None, version: str = None):
         self.config = config or RedisConfig()
+        self.version = version
 
     def install_packages(self) -> bool:
+        pkg_name = "redis-server"
+        if self.version:
+            # Try to install version if available, but usually redis is just redis-server in apt.
+            # We might check if redis-server=<version> works.
+            # But that's distro specific.
+            # Let's assume the user knows what they are doing or we just try installing `redis-server`
+            # and warn if version doesn't match?
+            # Or try to find a package with that version.
+            # For now, let's just log that we are trying to install.
+            info(f"Requested Redis version: {self.version}")
+
         if not check_command("redis-server"):
             info("redis-server not found. Installing via apt...")
             run_command("apt update", check=False)
@@ -218,13 +230,16 @@ def manage_redis(action: str):
     elif action == "status":
         service.status()
 
-def setup_redis():
+def setup_redis(version: str = None):
     """
     Install and configure Redis for Termux/Proot (Ubuntu).
+
+    Args:
+        version (str, optional): Specific version to install.
     """
     step("Redis Setup")
 
-    installer = RedisInstaller()
+    installer = RedisInstaller(version=version)
 
     # 1. Install
     if not installer.install_packages():

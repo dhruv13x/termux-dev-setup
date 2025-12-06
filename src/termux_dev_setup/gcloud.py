@@ -4,9 +4,12 @@ from .utils.shell import run_command, check_command
 import os
 from pathlib import Path
 
-def setup_gcloud():
+def setup_gcloud(version: str = None):
     """
     Install and configure Google Cloud CLI for Termux/Proot (Ubuntu).
+
+    Args:
+        version (str, optional): Specific version to install.
     """
     step("Google Cloud CLI Setup")
 
@@ -51,11 +54,17 @@ def setup_gcloud():
 
     # 5. Install gcloud CLI
     info("Installing google-cloud-cli...")
+
+    pkg_name = "google-cloud-cli"
+    if version:
+        pkg_name = f"google-cloud-cli={version}-*"
+        info(f"Targeting version: {version}")
+
     run_command("apt-get update -y", check=False)
     try:
-        run_command("apt-get install -y google-cloud-cli")
+        run_command(f"apt-get install -y {pkg_name}")
     except Exception:
-        error("Failed to install google-cloud-cli.")
+        error(f"Failed to install {pkg_name}.")
         return
 
     # 6. Verification & Init

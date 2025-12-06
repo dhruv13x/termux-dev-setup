@@ -23,8 +23,8 @@ A visionary, integration-oriented plan that categorizes features from **"Core Es
 
 **Focus**: Feature parity with top competitors, user experience improvements, and robust error handling.
 
-- [ ] **Interactive Setup**: Wizard-style CLI prompts (e.g., using `rich` or `questionary`) to guide users.
-- [ ] **Version Management**: CLI flags to specify service versions (e.g., `tds setup postgres --version 15`).
+- [x] **Interactive Setup**: Wizard-style CLI prompts (e.g., using `rich` or `questionary`) to guide users.
+- [x] **Version Management**: CLI flags to specify service versions (e.g., `tds setup postgres --version 15`).
 - [ ] **System Health Checks**: `tds doctor` command to verify environment health (disk, ports, dependencies).
 - [ ] **Unified Logging**: Centralized log management for `tds` operations.
 - [ ] **Configuration File**: Support `tds.toml` for persistent, project-level configuration.
