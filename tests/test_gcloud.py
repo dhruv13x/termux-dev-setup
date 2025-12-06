@@ -44,6 +44,20 @@ def test_setup_gcloud_success():
         mock_check_command.assert_any_call("gcloud")
         mock_run_command.assert_any_call("gcloud --version", check=False)
 
+def test_setup_gcloud_with_version():
+    """
+    Tests installation with a specific version.
+    """
+    version = "1.2.3"
+    with patch("termux_dev_setup.gcloud.check_command", side_effect=[True, True]), \
+         patch("termux_dev_setup.gcloud.run_command") as mock_run_command, \
+         patch("builtins.open", mock_open()):
+
+        gcloud.setup_gcloud(version=version)
+
+        mock_run_command.assert_any_call(f"apt-get install -y google-cloud-cli={version}-*")
+
+
 def test_setup_gcloud_no_apt():
     """
     Tests that setup fails if apt-get is not found.
@@ -115,3 +129,16 @@ def test_setup_gcloud_cli_install_exception():
          patch("termux_dev_setup.gcloud.error") as mock_error:
         gcloud.setup_gcloud()
         mock_error.assert_called_with("Failed to install google-cloud-cli.")
+
+def test_setup_gcloud_cli_install_exception_with_version():
+    """
+    Tests exception handling during gcloud-cli installation with version.
+    """
+    version = "1.2.3"
+    pkg_name = f"google-cloud-cli={version}-*"
+    with patch("termux_dev_setup.gcloud.check_command", return_value=True), \
+         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, None, None, None, Exception("Install error")]) as mock_run_command, \
+         patch("builtins.open", mock_open()), \
+         patch("termux_dev_setup.gcloud.error") as mock_error:
+        gcloud.setup_gcloud(version=version)
+        mock_error.assert_called_with(f"Failed to install {pkg_name}.")

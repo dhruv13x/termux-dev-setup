@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from termux_dev_setup.cli import main
+from termux_dev_setup.errors import TDSError
 
 # =================== Mocks for all dispatched functions ===================
 @pytest.fixture(autouse=True)
@@ -11,6 +12,7 @@ def mock_commands(monkeypatch):
     monkeypatch.setattr("termux_dev_setup.cli.setup_redis", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.manage_redis", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.setup_otel", MagicMock())
+    monkeypatch.setattr("termux_dev_setup.cli.manage_otel", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.setup_gcloud", MagicMock())
     monkeypatch.setattr("termux_dev_setup.cli.print_logo", MagicMock())
 
@@ -61,6 +63,30 @@ def test_manage_redis_commands(action):
         main()
         manage_redis.assert_called_with(action)
 
+@pytest.mark.parametrize("action", ["start", "stop", "restart", "status"])
+def test_manage_otel_commands(action):
+    from termux_dev_setup.cli import manage_otel
+    with patch('sys.argv', ['tds', 'manage', 'otel', action]):
+        main()
+        manage_otel.assert_called_with(action)
+
+# =================== Interactive Mode Tests ===================
+def test_interactive_mode_success():
+    with patch('sys.argv', ['tds', '--interactive']), \
+         patch('termux_dev_setup.cli.interactive.run_wizard', return_value="postgres") as mock_wizard, \
+         patch('termux_dev_setup.cli.interactive.run_service_setup') as mock_run_setup:
+        main()
+        mock_wizard.assert_called_once()
+        mock_run_setup.assert_called_with("postgres")
+
+def test_interactive_mode_exit():
+    with patch('sys.argv', ['tds', '--interactive']), \
+         patch('termux_dev_setup.cli.interactive.run_wizard', return_value=None) as mock_wizard:
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 0
+        mock_wizard.assert_called_once()
+
 # =================== Exception Handling Tests ===================
 def test_keyboard_interrupt():
     from termux_dev_setup.cli import setup_postgres
@@ -81,3 +107,11 @@ def test_generic_exception():
             main()
         assert excinfo.value.code == 1
         mock_print.assert_called_with("[error]✖  Unexpected error: Something broke[/error]")
+
+def test_tds_error():
+    from termux_dev_setup.cli import setup_gcloud
+    setup_gcloud.side_effect = TDSError("Known error", exit_code=7)
+    with patch('sys.argv', ['tds', 'setup', 'gcloud']):
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 7

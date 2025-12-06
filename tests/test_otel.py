@@ -1,8 +1,10 @@
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 from termux_dev_setup import otel
+from termux_dev_setup.otel import OtelService, manage_otel
 import os
 import shutil
+from pathlib import Path
 
 @pytest.fixture
 def mock_env(monkeypatch, tmp_path):
@@ -162,3 +164,170 @@ def test_setup_otel_validation_fails(mock_chmod, mock_run, mock_check, mock_env,
 
         otel.setup_otel()
         mock_error.assert_called_with("Config validation failed", exit_code=6)
+
+@patch("termux_dev_setup.otel.OtelConfig")
+def test_otel_service_is_running(mock_config_class):
+    mock_config = mock_config_class.return_value
+    mock_config.metrics_port = 8888
+
+    with patch("termux_dev_setup.otel.is_port_open", return_value=True) as mock_port:
+        service = OtelService()
+        assert service.is_running() is True
+        mock_port.assert_called_with(8888)
+
+    with patch("termux_dev_setup.otel.is_port_open", return_value=False):
+        service = OtelService()
+        assert service.is_running() is False
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("pathlib.Path.exists")
+def test_otel_service_start_already_running(mock_exists, mock_config_class):
+    with patch.object(OtelService, 'is_running', return_value=True), \
+         patch("termux_dev_setup.otel.success") as mock_success:
+        service = OtelService()
+        service.start()
+        mock_success.assert_called()
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("pathlib.Path.exists")
+def test_otel_service_start_missing_bin(mock_exists, mock_config_class):
+    mock_exists.return_value = False # Binary not found
+    with patch.object(OtelService, 'is_running', return_value=False), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        service = OtelService()
+        service.start()
+        mock_error.assert_called()
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("pathlib.Path.exists", side_effect=[True, False]) # Bin exists, Config missing
+def test_otel_service_start_missing_config(mock_exists, mock_config_class):
+    with patch.object(OtelService, 'is_running', return_value=False), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        service = OtelService()
+        service.start()
+        mock_error.assert_called()
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("pathlib.Path.exists", return_value=True)
+@patch("termux_dev_setup.otel.run_command")
+def test_otel_service_start_success(mock_run, mock_exists, mock_config_class):
+    with patch.object(OtelService, 'is_running', side_effect=[False, True]), \
+         patch("termux_dev_setup.otel.success") as mock_success:
+        service = OtelService()
+        service.start()
+        mock_success.assert_called_with("OpenTelemetry Collector started successfully.")
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("pathlib.Path.exists", return_value=True)
+@patch("termux_dev_setup.otel.run_command")
+@patch("time.sleep")
+def test_otel_service_start_timeout(mock_sleep, mock_run, mock_exists, mock_config_class):
+    with patch.object(OtelService, 'is_running', return_value=False), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        service = OtelService()
+        service.start()
+        mock_error.assert_called_with("OpenTelemetry Collector failed to start (timeout). Check logs.")
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("pathlib.Path.exists", return_value=True)
+@patch("termux_dev_setup.otel.run_command", side_effect=Exception("Start failed"))
+def test_otel_service_start_exception(mock_run, mock_exists, mock_config_class):
+    with patch.object(OtelService, 'is_running', return_value=False), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        service = OtelService()
+        service.start()
+        assert "Failed to start OTEL" in mock_error.call_args[0][0]
+
+@patch("termux_dev_setup.otel.OtelConfig")
+def test_otel_service_stop_not_running(mock_config_class):
+    with patch.object(OtelService, 'is_running', return_value=False), \
+         patch("termux_dev_setup.otel.success") as mock_success:
+        service = OtelService()
+        service.stop()
+        mock_success.assert_called_with("OpenTelemetry Collector stopped.")
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("termux_dev_setup.otel.run_command")
+@patch("time.sleep")
+def test_otel_service_stop_success(mock_sleep, mock_run, mock_config_class):
+    with patch.object(OtelService, 'is_running', side_effect=[True, False]), \
+         patch("termux_dev_setup.otel.success") as mock_success:
+        service = OtelService()
+        service.stop()
+        mock_success.assert_called_with("OpenTelemetry Collector stopped.")
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("termux_dev_setup.otel.run_command")
+@patch("time.sleep")
+def test_otel_service_stop_force_kill(mock_sleep, mock_run, mock_config_class):
+    # is_running returns True for 10 loops, then True again (after force kill attempt), then False
+    side_effect = [True] * 11 + [False]
+    with patch.object(OtelService, 'is_running', side_effect=side_effect), \
+         patch("termux_dev_setup.otel.success") as mock_success:
+        service = OtelService()
+        service.stop()
+        mock_success.assert_called_with("OpenTelemetry Collector stopped (force kill).")
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("termux_dev_setup.otel.run_command")
+@patch("time.sleep")
+def test_otel_service_stop_force_kill_fail(mock_sleep, mock_run, mock_config_class):
+    with patch.object(OtelService, 'is_running', return_value=True), \
+         patch("termux_dev_setup.otel.warning") as mock_warn:
+        service = OtelService()
+        service.stop()
+        mock_warn.assert_called_with("Failed to stop OpenTelemetry Collector.")
+
+@patch("termux_dev_setup.otel.OtelConfig")
+@patch("termux_dev_setup.otel.run_command", side_effect=Exception("Stop failed"))
+def test_otel_service_stop_exception(mock_run, mock_config_class):
+    with patch.object(OtelService, 'is_running', return_value=True), \
+         patch("termux_dev_setup.otel.error") as mock_error:
+        service = OtelService()
+        service.stop()
+        assert "Error stopping OTEL" in mock_error.call_args[0][0]
+
+@patch("termux_dev_setup.otel.OtelService")
+def test_manage_otel(mock_service_class):
+    mock_service = mock_service_class.return_value
+
+    manage_otel("start")
+    mock_service.start.assert_called_once()
+
+    manage_otel("stop")
+    mock_service.stop.assert_called_once()
+
+    manage_otel("restart")
+    mock_service.restart.assert_called_once()
+
+    manage_otel("status")
+    mock_service.status.assert_called_once()
+
+@patch("socket.create_connection")
+def test_is_port_open(mock_create_conn):
+    assert otel.is_port_open(80) is True
+
+    mock_create_conn.side_effect = Exception("Connection refused")
+    assert otel.is_port_open(80) is False
+
+def test_otel_service_restart():
+    with patch.object(OtelService, 'stop') as mock_stop, \
+         patch.object(OtelService, 'start') as mock_start, \
+         patch("time.sleep"):
+        service = OtelService()
+        service.restart()
+        mock_stop.assert_called_once()
+        mock_start.assert_called_once()
+
+def test_otel_service_status():
+    with patch.object(OtelService, 'is_running', return_value=True), \
+         patch("termux_dev_setup.otel.console.print") as mock_print:
+        service = OtelService()
+        service.status()
+        assert any("UP" in str(arg) for call in mock_print.call_args_list for arg in call[0])
+
+    with patch.object(OtelService, 'is_running', return_value=False), \
+         patch("termux_dev_setup.otel.console.print") as mock_print:
+        service = OtelService()
+        service.status()
+        assert any("DOWN" in str(arg) for call in mock_print.call_args_list for arg in call[0])

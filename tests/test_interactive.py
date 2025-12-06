@@ -44,7 +44,32 @@ def test_cli_interactive_mode(mock_prompt, mock_confirm):
             mock_wizard.assert_called_once()
             mock_run_setup.assert_called_with("postgres")
 
-def test_interactive_service_actions(mock_prompt):
-    """Test that the wizard allows selecting actions for a service."""
-    # This might require a more complex mock sequence if we implement a multi-step wizard
-    pass
+@pytest.mark.parametrize("service, confirm_resp, setup_func_name", [
+    ("postgres", True, "setup_postgres"),
+    ("postgres", False, "setup_postgres"),
+    ("redis", True, "setup_redis"),
+    ("redis", False, "setup_redis"),
+    ("otel", True, "setup_otel"),
+    ("otel", False, "setup_otel"),
+    ("gcloud", True, "setup_gcloud"),
+    ("gcloud", False, "setup_gcloud"),
+])
+def test_run_service_setup(service, confirm_resp, setup_func_name):
+    """Test run_service_setup calls appropriate setup functions based on confirmation."""
+
+    with patch(f"termux_dev_setup.interactive.{setup_func_name}") as mock_setup, \
+         patch("termux_dev_setup.interactive.Confirm.ask", return_value=confirm_resp) as mock_confirm:
+
+        interactive.run_service_setup(service)
+
+        mock_confirm.assert_called_once()
+        if confirm_resp:
+            mock_setup.assert_called_once()
+        else:
+            mock_setup.assert_not_called()
+
+def test_run_service_setup_unknown_service():
+    """Test run_service_setup does nothing for unknown service."""
+    with patch("termux_dev_setup.interactive.Confirm.ask") as mock_confirm:
+        interactive.run_service_setup("unknown")
+        mock_confirm.assert_not_called()

@@ -220,6 +220,19 @@ def test_setup_redis_full_install(mock_check, mock_run, mock_file, mock_manage):
     # Check manage start
     mock_manage.assert_called_with("start")
 
+def test_setup_redis_with_version():
+    with patch("termux_dev_setup.redis.run_command") as mock_run, \
+         patch("termux_dev_setup.redis.check_command", return_value=True), \
+         patch("termux_dev_setup.redis.manage_redis"), \
+         patch("termux_dev_setup.redis.info") as mock_info, \
+         patch("builtins.open", mock_open()) as mock_file:
+
+        version = "6.0"
+        redis.setup_redis(version=version)
+
+        # Verify that we logged the version request
+        mock_info.assert_any_call(f"Requested Redis version: {version}")
+
 @patch("termux_dev_setup.redis.manage_redis")
 @patch("termux_dev_setup.redis.run_command")
 @patch("builtins.open", new_callable=mock_open)
