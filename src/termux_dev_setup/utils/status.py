@@ -1,6 +1,7 @@
 import sys
 from rich.console import Console
 from rich.theme import Theme
+from termux_dev_setup.errors import TDSError
 
 # Define a theme consistent with the bash scripts
 custom_theme = Theme({
@@ -22,10 +23,10 @@ def success(msg: str) -> None:
     console.print(f"[success]✔[/success]  {msg}")
 
 def error(msg: str, exit_code: int = 1) -> None:
-    """Print an error message and optionally exit."""
+    """Print an error message and raise TDSError."""
     console.print(f"[error]✖  {msg}[/error]")
     if exit_code != 0:
-        sys.exit(exit_code)
+        raise TDSError(msg, exit_code)
 
 def warning(msg: str) -> None:
     """Print a warning message."""

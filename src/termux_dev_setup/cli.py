@@ -3,6 +3,7 @@ import sys
 from rich_argparse import RichHelpFormatter
 from rich.console import Console
 from .utils.status import error
+from .errors import TDSError
 from .utils.banner import print_logo
 from .postgres import setup_postgres, manage_postgres
 from .redis import setup_redis, manage_redis
@@ -47,35 +48,49 @@ def main():
     args = parser.parse_args()
 
     try:
-        if args.command == "setup":
-            if args.service == "postgres":
-                setup_postgres()
-            elif args.service == "redis":
-                setup_redis()
-            elif args.service == "otel":
-                setup_otel()
-            elif args.service == "gcloud":
-                setup_gcloud()
-            else:
-                setup_parser.print_help()
-        
-        elif args.command == "manage":
-            if args.service == "postgres":
-                manage_postgres(args.action)
-            elif args.service == "redis":
-                manage_redis(args.action)
-            elif args.service == "otel":
-                manage_otel(args.action)
-            else:
-                manage_parser.print_help()
-        
-        else:
-            parser.print_help()
-            
+        main_execution(args, setup_parser, manage_parser, parser)
+    except TDSError as e:
+        # Error is already printed if it came from error(), but if it came from elsewhere
+        # we might want to ensure it's displayed. However, our convention is that TDSError
+        # raised by error() has already been printed.
+        # But if we raise TDSError manually, we should print it.
+        # Let's assume error() handles printing. If we just raise TDSError elsewhere, we should print it.
+        # For now, let's rely on error() being the main way to raise fatal errors.
+        # But wait, we just changed error() to raise TDSError.
+        # If we catch it here, we just need to exit.
+        sys.exit(e.exit_code)
     except KeyboardInterrupt:
-        error("\nOperation cancelled by user.", exit_code=130)
+        console.print("\n[error]✖  Operation cancelled by user.[/error]")
+        sys.exit(130)
     except Exception as e:
-        error(f"Unexpected error: {e}", exit_code=1)
+        console.print(f"[error]✖  Unexpected error: {e}[/error]")
+        sys.exit(1)
+
+def main_execution(args, setup_parser, manage_parser, parser):
+    if args.command == "setup":
+        if args.service == "postgres":
+            setup_postgres()
+        elif args.service == "redis":
+            setup_redis()
+        elif args.service == "otel":
+            setup_otel()
+        elif args.service == "gcloud":
+            setup_gcloud()
+        else:
+            setup_parser.print_help()
+
+    elif args.command == "manage":
+        if args.service == "postgres":
+            manage_postgres(args.action)
+        elif args.service == "redis":
+            manage_redis(args.action)
+        elif args.service == "otel":
+            manage_otel(args.action)
+        else:
+            manage_parser.print_help()
+
+    else:
+        parser.print_help()
 
 if __name__ == "__main__":
     main()
