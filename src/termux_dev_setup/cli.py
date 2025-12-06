@@ -9,6 +9,7 @@ from .postgres import setup_postgres, manage_postgres
 from .redis import setup_redis, manage_redis
 from .otel import setup_otel, manage_otel
 from .gcloud import setup_gcloud
+from . import interactive
 
 console = Console()
 
@@ -18,16 +19,31 @@ def main():
         description="Termux Development Environment Setup Tool",
         formatter_class=RichHelpFormatter
     )
+
+    # Add interactive flag to root parser
+    parser.add_argument("--interactive", "-i", action="store_true", help="Run interactive setup wizard")
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # --- Setup Command ---
     setup_parser = subparsers.add_parser("setup", help="Install and configure services", formatter_class=RichHelpFormatter)
     setup_subparsers = setup_parser.add_subparsers(dest="service", help="Service to setup")
 
-    setup_subparsers.add_parser("postgres", help="Install and configure PostgreSQL", formatter_class=RichHelpFormatter)
-    setup_subparsers.add_parser("redis", help="Install and configure Redis", formatter_class=RichHelpFormatter)
-    setup_subparsers.add_parser("otel", help="Install OpenTelemetry Collector", formatter_class=RichHelpFormatter)
-    setup_subparsers.add_parser("gcloud", help="Install Google Cloud CLI", formatter_class=RichHelpFormatter)
+    # Postgres Setup
+    pg_setup = setup_subparsers.add_parser("postgres", help="Install and configure PostgreSQL", formatter_class=RichHelpFormatter)
+    pg_setup.add_argument("--version", help="Specify PostgreSQL version (e.g. 15)")
+
+    # Redis Setup
+    redis_setup = setup_subparsers.add_parser("redis", help="Install and configure Redis", formatter_class=RichHelpFormatter)
+    redis_setup.add_argument("--version", help="Specify Redis version")
+
+    # OpenTelemetry Setup
+    otel_setup = setup_subparsers.add_parser("otel", help="Install OpenTelemetry Collector", formatter_class=RichHelpFormatter)
+    otel_setup.add_argument("--version", help="Specify OpenTelemetry version")
+
+    # GCloud Setup
+    gcloud_setup = setup_subparsers.add_parser("gcloud", help="Install Google Cloud CLI", formatter_class=RichHelpFormatter)
+    gcloud_setup.add_argument("--version", help="Specify GCloud version")
 
     # --- Manage Command ---
     manage_parser = subparsers.add_parser("manage", help="Start/Stop/Status services", formatter_class=RichHelpFormatter)
@@ -48,7 +64,14 @@ def main():
     args = parser.parse_args()
 
     try:
-        main_execution(args, setup_parser, manage_parser, parser)
+        if args.interactive:
+            service = interactive.run_wizard()
+            if service:
+                interactive.run_service_setup(service)
+            else:
+                sys.exit(0)
+        else:
+            main_execution(args, setup_parser, manage_parser, parser)
     except TDSError as e:
         # Error is already printed if it came from error(), but if it came from elsewhere
         # we might want to ensure it's displayed. However, our convention is that TDSError
@@ -69,13 +92,13 @@ def main():
 def main_execution(args, setup_parser, manage_parser, parser):
     if args.command == "setup":
         if args.service == "postgres":
-            setup_postgres()
+            setup_postgres(version=args.version)
         elif args.service == "redis":
-            setup_redis()
+            setup_redis(version=args.version)
         elif args.service == "otel":
-            setup_otel()
+            setup_otel(version=args.version)
         elif args.service == "gcloud":
-            setup_gcloud()
+            setup_gcloud(version=args.version)
         else:
             setup_parser.print_help()
 

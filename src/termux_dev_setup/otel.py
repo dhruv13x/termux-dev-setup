@@ -108,11 +108,11 @@ class OtelService:
         console.print(f"  Ports:  Metrics={self.config.metrics_port}, gRPC={self.config.grpc_port}, HTTP={self.config.http_port}")
 
 class OtelInstaller:
-    def __init__(self, config: OtelConfig = None):
+    def __init__(self, config: OtelConfig = None, version: str = None):
         self.config = config or OtelConfig()
         # Derive some values used in installation
         # Note: In a stricter refactor, we might want these in Config, but they are transient install params.
-        self.otel_version = os.environ.get("OTEL_VERSION", "0.137.0")
+        self.otel_version = version or os.environ.get("OTEL_VERSION", "0.137.0")
         self.otel_sha256 = os.environ.get("OTEL_SHA256", "")
         self.force_update = os.environ.get("OTEL_FORCE_UPDATE", "0") == "1"
         self.base_dir = Path(os.path.dirname(self.config.config_path)) # Assume config is in base dir
@@ -304,13 +304,16 @@ def manage_otel(action: str):
     elif action == "status":
         service.status()
 
-def setup_otel():
+def setup_otel(version: str = None):
     """
     Install and configure OpenTelemetry Collector for Termux/Proot (Ubuntu).
+
+    Args:
+        version (str, optional): Specific version to install.
     """
     step("OpenTelemetry Collector Setup")
     
-    installer = OtelInstaller()
+    installer = OtelInstaller(version=version)
 
     # 1. Check Prerequisites
     if not installer.check_prerequisites():

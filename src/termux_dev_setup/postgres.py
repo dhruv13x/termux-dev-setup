@@ -69,9 +69,10 @@ class PostgresService:
         pass
 
 class PostgresInstaller:
-    def __init__(self, config: PostgresConfig = None, view: PostgresView = None):
+    def __init__(self, config: PostgresConfig = None, view: PostgresView = None, version: str = None):
         self.config = config or PostgresConfig()
         self.view = view or PostgresView()
+        self.version = version
         # Support legacy DATA_DIR env var for setup if needed
         if "DATA_DIR" in os.environ:
             self.config.data_dir = os.environ["DATA_DIR"]
@@ -82,12 +83,26 @@ class PostgresInstaller:
             return False
 
         self.view.print_info("Checking/Installing PostgreSQL packages...")
+
+        pkg_name = "postgresql"
+        if self.version:
+            pkg_name = f"postgresql-{self.version}"
+
         run_command("apt update", check=False)
         try:
-            run_command("apt install -y postgresql postgresql-contrib util-linux")
+            cmd = f"apt install -y {pkg_name}"
+            # If version is not specified, we add contrib. If version is specified,
+            # we rely on dependencies or user can manually install extras if needed,
+            # or we can try to guess.
+            if not self.version:
+                cmd += " postgresql-contrib"
+
+            cmd += " util-linux"
+
+            run_command(cmd)
             return True
         except Exception:
-            self.view.print_error("Failed to install PostgreSQL packages via apt.")
+            self.view.print_error(f"Failed to install {pkg_name} packages via apt.")
             return False
 
     def ensure_user(self):
@@ -137,10 +152,10 @@ class PostgresInstaller:
         return pg_user, pg_db
 
 class PostgresController:
-    def __init__(self, service: PostgresService = None, installer: PostgresInstaller = None, view: PostgresView = None):
+    def __init__(self, service: PostgresService = None, installer: PostgresInstaller = None, view: PostgresView = None, version: str = None):
         self.view = view or PostgresView()
         self.service = service or PostgresService()
-        self.installer = installer or PostgresInstaller(view=self.view)
+        self.installer = installer or PostgresInstaller(view=self.view, version=version)
 
     def manage(self, action: str):
         self.view.print_step(f"PostgreSQL {action.capitalize()}")
@@ -250,11 +265,14 @@ def manage_postgres(action: str):
     controller = PostgresController()
     controller.manage(action)
 
-def setup_postgres():
+def setup_postgres(version: str = None):
     """
     Install and configure PostgreSQL for Termux/Proot (Ubuntu).
+
+    Args:
+        version (str, optional): Specific version to install (e.g., '15').
     """
-    controller = PostgresController()
+    controller = PostgresController(version=version)
     controller.setup()
     
 if __name__ == "__main__":
