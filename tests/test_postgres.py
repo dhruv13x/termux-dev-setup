@@ -357,3 +357,22 @@ def test_ensure_user_calls_adduser(mock_run, mock_check):
         installer.ensure_user()
         # Should call adduser
         assert any("adduser" in str(c) for c in mock_run.call_args_list)
+
+def test_setup_postgres_with_version(mock_pg_bin):
+    """Test setup with a specific version."""
+    with patch("termux_dev_setup.postgres.run_command") as mock_run, \
+         patch("termux_dev_setup.postgres.check_command", return_value=True), \
+         patch("termux_dev_setup.postgres.PostgresInstaller.init_db", return_value=True), \
+         patch("termux_dev_setup.postgres.PostgresInstaller.setup_db_user", return_value=("pg", "db")), \
+         patch("termux_dev_setup.postgres.PostgresService.start") as mock_start:
+
+        mock_start.return_value = MagicMock(status=ServiceStatus.RUNNING)
+        postgres.setup_postgres(version="15")
+
+        # Check if apt install was called with version
+        found = False
+        for call in mock_run.call_args_list:
+            if "apt install -y postgresql-15" in str(call):
+                found = True
+                break
+        assert found
