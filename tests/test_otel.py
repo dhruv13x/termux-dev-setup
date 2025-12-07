@@ -10,7 +10,7 @@ from pathlib import Path
 def mock_env(monkeypatch, tmp_path):
     base_dir = tmp_path
     monkeypatch.setenv("BASE_DIR", str(base_dir))
-    monkeypatch.setenv("OTEL_VERSION", "1.0.0")
+    monkeypatch.setenv("OTEL_VERSION", "2.0.0")
     monkeypatch.setenv("OTEL_SHA256", "correct_sha256")
     monkeypatch.setattr(os.path, 'expanduser', lambda p: str(base_dir) if p == "~" else p)
     return base_dir

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termux-dev-setup"
-version = "1.0.0"
+version = "2.0.0"
 description = "Termux development environment setup tool (PostgreSQL, Redis, etc.)"
 readme = "README.md"
 requires-python = ">=3.8"
