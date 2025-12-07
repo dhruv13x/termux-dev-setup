@@ -29,11 +29,10 @@ def run_command(command: str, shell: bool = False, check: bool = True, capture_o
             # If capturing output, the error might be in stderr
             err_msg = e.stderr.strip() if e.stderr else str(e)
             error(f"Command failed: {command}\nError: {err_msg}", exit_code=e.returncode)
-        raise e
+
     except FileNotFoundError:
         error(f"Command not found: {args[0] if isinstance(args, list) else args}", exit_code=127)
-        # This is just to satisfy type checker, error() exits
-        raise
+
 
 def check_command(cmd: str) -> bool:
     """Check if a command exists in the PATH."""
