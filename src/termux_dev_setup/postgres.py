@@ -58,7 +58,7 @@ class PostgresService:
              return ServiceResult(ServiceStatus.FAILED, "pg_ctl stop failed.")
 
     def restart(self):
-        stop_res = self.stop()
+        self.stop()
         # If stop failed severely, maybe don't start? But usually restart tries best effort.
         # Original logic was just stop() then sleep() then start().
         time.sleep(1)

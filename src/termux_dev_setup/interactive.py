@@ -1,8 +1,8 @@
 from rich.prompt import Prompt, Confirm
 from rich.console import Console
-from .postgres import setup_postgres, manage_postgres
-from .redis import setup_redis, manage_redis
-from .otel import setup_otel, manage_otel
+from .postgres import setup_postgres
+from .redis import setup_redis
+from .otel import setup_otel
 from .gcloud import setup_gcloud
 
 console = Console()

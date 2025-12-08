@@ -1,4 +1,3 @@
-import sys
 from rich.console import Console
 from rich.theme import Theme
 from termux_dev_setup.errors import TDSError

@@ -43,7 +43,7 @@ class OtelService:
             error(f"Config {config_path} not found. Run 'tds setup otel' first.")
             return
 
-        info(f"Starting OpenTelemetry Collector...")
+        info("Starting OpenTelemetry Collector...")
 
         # Run in background
         cmd = f"nohup '{otel_bin}' --config '{config_path}' > '{self.config.log_file}' 2>&1 &"
