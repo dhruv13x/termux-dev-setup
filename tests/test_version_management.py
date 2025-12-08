@@ -1,11 +1,11 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from termux_dev_setup import cli, postgres
 
 def test_setup_postgres_with_version():
     """Test that setup_postgres accepts and uses the version argument."""
-    with patch("termux_dev_setup.postgres.PostgresInstaller.install_packages") as mock_install:
-        with patch("termux_dev_setup.postgres.PostgresController.setup") as mock_setup:
+    with patch("termux_dev_setup.postgres.PostgresInstaller.install_packages"):
+        with patch("termux_dev_setup.postgres.PostgresController.setup"):
              # We need to simulate the CLI parsing --version
              # But first let's verify postgres.setup_postgres can take a version arg
              # Currently it doesn't.

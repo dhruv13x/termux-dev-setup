@@ -2,7 +2,12 @@ from unittest.mock import patch, mock_open
 import pytest
 from termux_dev_setup import gcloud
 
-def test_setup_gcloud_success():
+@pytest.fixture
+def mock_lock():
+    with patch("termux_dev_setup.gcloud.process_lock") as mock:
+        yield mock
+
+def test_setup_gcloud_success(mock_lock):
     """
     Tests the successful installation and configuration of gcloud.
     """
@@ -44,7 +49,7 @@ def test_setup_gcloud_success():
         mock_check_command.assert_any_call("gcloud")
         mock_run_command.assert_any_call("gcloud --version", check=False)
 
-def test_setup_gcloud_with_version():
+def test_setup_gcloud_with_version(mock_lock):
     """
     Tests installation with a specific version.
     """
@@ -58,7 +63,7 @@ def test_setup_gcloud_with_version():
         mock_run_command.assert_any_call(f"apt-get install -y google-cloud-cli={version}-*")
 
 
-def test_setup_gcloud_no_apt():
+def test_setup_gcloud_no_apt(mock_lock):
     """
     Tests that setup fails if apt-get is not found.
     """
@@ -71,12 +76,12 @@ def test_setup_gcloud_no_apt():
         mock_error.assert_called_once_with("apt-get not found. Ensure you are inside an Ubuntu/Debian proot-distro.")
         mock_run_command.assert_not_called()
 
-def test_setup_gcloud_install_fails():
+def test_setup_gcloud_install_fails(mock_lock):
     """
     Tests the case where gcloud is not found after installation.
     """
     # check_command should return True for apt-get, but False for gcloud at the end.
-    with patch("termux_dev_setup.gcloud.check_command", side_effect=[True, False]) as mock_check_command, \
+    with patch("termux_dev_setup.gcloud.check_command", side_effect=[True, False]), \
          patch("termux_dev_setup.gcloud.run_command"), \
          patch("builtins.open", mock_open()), \
          patch("termux_dev_setup.gcloud.error") as mock_error:
@@ -84,29 +89,29 @@ def test_setup_gcloud_install_fails():
         gcloud.setup_gcloud()
         mock_error.assert_called_with("gcloud command not found after installation.")
 
-def test_setup_gcloud_prereq_install_exception():
+def test_setup_gcloud_prereq_install_exception(mock_lock):
     """
     Tests exception handling during prerequisite installation.
     """
     with patch("termux_dev_setup.gcloud.check_command", return_value=True), \
-         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, Exception("Install error")]) as mock_run_command, \
+         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, Exception("Install error")]), \
          patch("termux_dev_setup.gcloud.error") as mock_error:
         gcloud.setup_gcloud()
         mock_error.assert_called_with("Failed to install prerequisites.")
 
 
-def test_setup_gcloud_key_import_exception():
+def test_setup_gcloud_key_import_exception(mock_lock):
     """
     Tests exception handling during key import.
     """
     with patch("termux_dev_setup.gcloud.check_command", return_value=True), \
-         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, None, Exception("Key error")]) as mock_run_command, \
+         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, None, Exception("Key error")]), \
          patch("termux_dev_setup.gcloud.error") as mock_error:
         gcloud.setup_gcloud()
         mock_error.assert_called_with("Failed to import Google Cloud key.")
 
 
-def test_setup_gcloud_repo_write_exception():
+def test_setup_gcloud_repo_write_exception(mock_lock):
     """
     Tests exception handling when writing the repo file.
     """
@@ -119,25 +124,25 @@ def test_setup_gcloud_repo_write_exception():
         mock_error.assert_called_with("Failed to write repo file: Permission denied")
 
 
-def test_setup_gcloud_cli_install_exception():
+def test_setup_gcloud_cli_install_exception(mock_lock):
     """
     Tests exception handling during gcloud-cli installation.
     """
     with patch("termux_dev_setup.gcloud.check_command", return_value=True), \
-         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, None, None, None, Exception("Install error")]) as mock_run_command, \
+         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, None, None, None, Exception("Install error")]), \
          patch("builtins.open", mock_open()), \
          patch("termux_dev_setup.gcloud.error") as mock_error:
         gcloud.setup_gcloud()
         mock_error.assert_called_with("Failed to install google-cloud-cli.")
 
-def test_setup_gcloud_cli_install_exception_with_version():
+def test_setup_gcloud_cli_install_exception_with_version(mock_lock):
     """
     Tests exception handling during gcloud-cli installation with version.
     """
     version = "1.2.3"
     pkg_name = f"google-cloud-cli={version}-*"
     with patch("termux_dev_setup.gcloud.check_command", return_value=True), \
-         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, None, None, None, Exception("Install error")]) as mock_run_command, \
+         patch("termux_dev_setup.gcloud.run_command", side_effect=[None, None, None, None, Exception("Install error")]), \
          patch("builtins.open", mock_open()), \
          patch("termux_dev_setup.gcloud.error") as mock_error:
         gcloud.setup_gcloud(version=version)

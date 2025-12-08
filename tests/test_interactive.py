@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from termux_dev_setup import interactive, cli
 
 @pytest.fixture

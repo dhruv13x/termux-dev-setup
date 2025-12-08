@@ -1,7 +1,6 @@
 import subprocess
 import shlex
-from typing import Optional, Tuple
-from .status import error, info
+from .status import error
 
 def run_command(command: str, shell: bool = False, check: bool = True, capture_output: bool = False) -> subprocess.CompletedProcess:
     """

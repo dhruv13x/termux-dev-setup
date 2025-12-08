@@ -2,7 +2,6 @@ import argparse
 import sys
 from rich_argparse import RichHelpFormatter
 from rich.console import Console
-from .utils.status import error
 from .errors import TDSError
 from .utils.banner import print_logo
 from .postgres import setup_postgres, manage_postgres

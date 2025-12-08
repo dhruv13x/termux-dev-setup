@@ -1,6 +1,4 @@
 import fcntl
-import os
-import sys
 from contextlib import contextmanager
 from pathlib import Path
 from .status import error

@@ -9,13 +9,8 @@ import os
 console = Console()
 
 def print_logo():
-    import os
-    import random
-    import sys
     import colorsys
-    import math
     from rich.console import Console
-    from rich.text import Text
 
     console = Console()
 
@@ -104,16 +99,13 @@ def print_logo():
             idx = int(idx_env)
             if 0 <= idx < len(fixed_palettes):
                 palette = list(fixed_palettes[idx])
-                mode = f"fixed[{idx}]"
             else:
                 raise ValueError
         except Exception:
             # bad value -> fall through to procedural generation
             palette = None
-            mode = "procedural (bad env fallback)"
     else:
         palette = None
-        mode = "procedural"
 
     # If we didn't get a fixed palette, procedurally generate one (practically infinite variations)
     if palette is None:
@@ -157,7 +149,6 @@ def print_logo():
                 new_palette.append((int(round(rr * 255)), int(round(gg * 255)), int(round(bb * 255))))
             palette = new_palette
 
-        mode = "procedural"
 
     # permute the palette slightly so gradients shift even when endpoints similar
     _sysrand.shuffle(palette)

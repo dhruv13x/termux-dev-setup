@@ -1,9 +1,6 @@
-from unittest.mock import patch, mock_open, call, MagicMock
+from unittest.mock import patch, mock_open, MagicMock
 import pytest
 from termux_dev_setup import redis, config
-from pathlib import Path
-import os
-import socket
 
 # =================== Fixtures ===================
 @pytest.fixture(autouse=True)
@@ -40,7 +37,7 @@ def test_redis_config_from_env(monkeypatch):
 def test_manage_redis_start_already_running(mock_is_port_open):
     with patch("termux_dev_setup.redis.success") as mock_success:
         redis.manage_redis("start")
-        mock_success.assert_called_with(f"Redis is already running on port 6379.")
+        mock_success.assert_called_with("Redis is already running on port 6379.")
 
 @patch("termux_dev_setup.redis.is_port_open", return_value=False)
 @patch("pathlib.Path.exists", return_value=False)
@@ -221,11 +218,11 @@ def test_setup_redis_full_install(mock_check, mock_run, mock_file, mock_manage):
     mock_manage.assert_called_with("start")
 
 def test_setup_redis_with_version():
-    with patch("termux_dev_setup.redis.run_command") as mock_run, \
+    with patch("termux_dev_setup.redis.run_command"), \
          patch("termux_dev_setup.redis.check_command", return_value=True), \
          patch("termux_dev_setup.redis.manage_redis"), \
          patch("termux_dev_setup.redis.info") as mock_info, \
-         patch("builtins.open", mock_open()) as mock_file:
+         patch("builtins.open", mock_open()):
 
         version = "6.0"
         redis.setup_redis(version=version)
