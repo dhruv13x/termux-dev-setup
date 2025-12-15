@@ -124,3 +124,20 @@ class OtelConfig:
         self.config_path = validate_non_empty(self.config_path, "config_path")
         self.otel_bin = validate_non_empty(self.otel_bin, "otel_bin")
         self.log_file = validate_non_empty(self.log_file, "log_file")
+
+@dataclass
+class GCloudConfig:
+    keyring_path: str = "/usr/share/keyrings/cloud.google.gpg"
+    repo_file: str = "/etc/apt/sources.list.d/google-cloud-sdk.list"
+    repo_url: str = "https://packages.cloud.google.com/apt"
+    repo_name: str = "cloud-sdk"
+    key_url: str = "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
+
+    def __post_init__(self):
+        # Allow environment overrides if needed, though rare for these system paths
+        self.keyring_path = os.environ.get("GCLOUD_KEYRING_PATH", self.keyring_path)
+        self.repo_file = os.environ.get("GCLOUD_REPO_FILE", self.repo_file)
+
+        # Validate
+        self.keyring_path = validate_non_empty(self.keyring_path, "keyring_path")
+        self.repo_file = validate_non_empty(self.repo_file, "repo_file")

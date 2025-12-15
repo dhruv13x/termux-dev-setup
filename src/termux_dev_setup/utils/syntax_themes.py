@@ -16,7 +16,6 @@ Usage:
 
 from __future__ import annotations
 import random
-import math
 from typing import Tuple, Dict
 from pygments.style import Style
 from pygments.token import (
@@ -32,9 +31,6 @@ from pygments.token import (
     Text,
 )
 
-from pygments.style import Style
-from pygments.token import Keyword, Name, Comment, String, Error, Text, \
-     Number, Operator, Generic, Whitespace, Punctuation, Other, Literal, Token
 
 # ----------------------------
 # 1. CyberpunkStyle
@@ -212,8 +208,8 @@ _RANDOM_THEME_CACHE: Dict[str, Tuple[type, str]] = {}
 def clamp01(x: float) -> float:
     return max(0.0, min(1.0, x))
 
-def hsl_to_rgb(h: float, s: float, l: float) -> Tuple[int, int, int]:
-    c = (1 - abs(2 * l - 1)) * s
+def hsl_to_rgb(h: float, s: float, lightness: float) -> Tuple[int, int, int]:
+    c = (1 - abs(2 * lightness - 1)) * s
     hp = h / 60.0
     x = c * (1 - abs((hp % 2) - 1))
     if 0 <= hp < 1:
@@ -228,7 +224,7 @@ def hsl_to_rgb(h: float, s: float, l: float) -> Tuple[int, int, int]:
         r1, g1, b1 = x, 0, c
     else:
         r1, g1, b1 = c, 0, x
-    m = l - c/2
+    m = lightness - c/2
     r, g, b = r1 + m, g1 + m, b1 + m
     return (int(round(255*clamp01(r))),
             int(round(255*clamp01(g))),
@@ -237,8 +233,8 @@ def hsl_to_rgb(h: float, s: float, l: float) -> Tuple[int, int, int]:
 def rgb_to_hex(rgb: Tuple[int,int,int]) -> str:
     return "#{:02x}{:02x}{:02x}".format(*rgb)
 
-def hsl_to_hex(h: float, s: float, l: float) -> str:
-    return rgb_to_hex(hsl_to_rgb(h % 360, clamp01(s), clamp01(l)))
+def hsl_to_hex(h: float, s: float, lightness: float) -> str:
+    return rgb_to_hex(hsl_to_rgb(h % 360, clamp01(s), clamp01(lightness)))
 
 def relative_luminance(hex_color: str) -> float:
     r = int(hex_color[1:3], 16) / 255.0
@@ -270,16 +266,18 @@ def _ensure_contrast(fg_hex: str, bg_hex: str, min_ratio: float = _MIN_CONTRAST)
     if contrast_ratio(fg_hex, bg_hex) >= min_ratio:
         return fg_hex
     def mix(hexc, with_white: bool, amount: float) -> str:
-        r1 = int(hexc[1:3],16); g1 = int(hexc[3:5],16); b1 = int(hexc[5:7],16)
+        r1 = int(hexc[1:3], 16)
+        g1 = int(hexc[3:5], 16)
+        b1 = int(hexc[5:7], 16)
         if with_white:
-            r2,g2,b2 = 255,255,255
+            r2, g2, b2 = 255, 255, 255
         else:
-            r2,g2,b2 = 0,0,0
+            r2, g2, b2 = 0, 0, 0
         r = int(round(r1*(1-amount) + r2*amount))
         g = int(round(g1*(1-amount) + g2*amount))
         b = int(round(b1*(1-amount) + b2*amount))
-        return "#{:02x}{:02x}{:02x}".format(r,g,b)
-    for amt in [i/20.0 for i in range(1,20)]:
+        return "#{:02x}{:02x}{:02x}".format(r, g, b)
+    for amt in [i/20.0 for i in range(1, 20)]:
         c1 = mix(fg_hex, True, amt)
         if contrast_ratio(c1, bg_hex) >= min_ratio:
             return c1
@@ -305,22 +303,21 @@ def generate_random_theme(seed: int = None, prefer_dark: bool = True) -> Tuple[t
     primary_hue = rand.uniform(0, 360)
     hues = _choose_harmony_hues(rand, primary_hue)
 
-    def role_color(hue, sat_range=(0.45,0.9), light_range=(0.45,0.7)):
+    def role_color(hue, sat_range=(0.45, 0.9), light_range=(0.45, 0.7)):
         sat = rand.uniform(*sat_range)
         light = rand.uniform(*light_range) if is_dark else rand.uniform(0.25, 0.55)
         raw = hsl_to_hex(hue, sat, light)
         safe = _ensure_contrast(raw, bg_hex, _MIN_CONTRAST)
         return safe
 
-    color_comment = role_color(hues[2], sat_range=(0.2,0.45), light_range=(0.45,0.6))
-    color_keyword = role_color(hues[0], sat_range=(0.55,0.95), light_range=(0.45,0.7))
-    color_name = role_color(hues[1], sat_range=(0.45,0.9), light_range=(0.45,0.7))
-    color_func = role_color(hues[0], sat_range=(0.45,0.9), light_range=(0.35,0.6))
-    color_builtin = role_color(hues[1], sat_range=(0.35,0.75), light_range=(0.45,0.7))
-    color_string = role_color((hues[0]+60) % 360, sat_range=(0.45,0.9), light_range=(0.4,0.7))
-    color_number = role_color((hues[1]+120) % 360, sat_range=(0.45,0.9), light_range=(0.45,0.7))
-    color_literal = role_color((hues[2]+90) % 360, sat_range=(0.45,0.9), light_range=(0.45,0.7))
-    color_generic = role_color((primary_hue+200) % 360, sat_range=(0.15,0.5), light_range=(0.4,0.7))
+    color_comment = role_color(hues[2], sat_range=(0.2, 0.45), light_range=(0.45, 0.6))
+    color_keyword = role_color(hues[0], sat_range=(0.55, 0.95), light_range=(0.45, 0.7))
+    color_func = role_color(hues[0], sat_range=(0.45, 0.9), light_range=(0.35, 0.6))
+    color_builtin = role_color(hues[1], sat_range=(0.35, 0.75), light_range=(0.45, 0.7))
+    color_string = role_color((hues[0]+60) % 360, sat_range=(0.45, 0.9), light_range=(0.4, 0.7))
+    color_number = role_color((hues[1]+120) % 360, sat_range=(0.45, 0.9), light_range=(0.45, 0.7))
+    color_literal = role_color((hues[2]+90) % 360, sat_range=(0.45, 0.9), light_range=(0.45, 0.7))
+    color_generic = role_color((primary_hue+200) % 360, sat_range=(0.15, 0.5), light_range=(0.4, 0.7))
 
     line_number = _ensure_contrast(hsl_to_hex(bg_hue, 0.05, clamp01(bg_light + (0.12 if is_dark else -0.12))), bg_hex, 1.5)
     line_number_current = color_keyword
@@ -344,7 +341,7 @@ def generate_random_theme(seed: int = None, prefer_dark: bool = True) -> Tuple[t
         Text: fg_hex,
     }
 
-    cls_name = f"RandomTheme_{seed or rand.randint(0,10**9)}"
+    cls_name = f"RandomTheme_{seed or rand.randint(0, 10**9)}"
     attrs = {"background_color": bg_hex, "default_style": fg_hex, "styles": styles}
     StyleClass = type(cls_name, (Style,), attrs)
     return StyleClass, bg_hex
@@ -391,4 +388,3 @@ def get_syntax_theme(name: str):
 
     # fallback
     return THEME_MAP["one_dark"]
-  

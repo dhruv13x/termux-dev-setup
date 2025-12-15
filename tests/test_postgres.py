@@ -1,6 +1,6 @@
 import pytest
 import socket
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from termux_dev_setup import postgres
 # Import from the new locations for patching
 from termux_dev_setup.utils import postgres_utils, network
@@ -40,8 +40,12 @@ def mock_view():
 def test_get_pg_bin_success():
     with patch("termux_dev_setup.utils.postgres_utils.Path") as mock_path:
         mock_pg_lib = MagicMock()
-        mock_v14 = MagicMock(); mock_v14.name = "14"; mock_v14.is_dir.return_value = True
-        mock_v16 = MagicMock(); mock_v16.name = "16"; mock_v16.is_dir.return_value = True
+        mock_v14 = MagicMock()
+        mock_v14.name = "14"
+        mock_v14.is_dir.return_value = True
+        mock_v16 = MagicMock()
+        mock_v16.name = "16"
+        mock_v16.is_dir.return_value = True
         mock_pg_lib.iterdir.return_value = [mock_v14, mock_v16]
         mock_path.return_value = mock_pg_lib
         assert postgres_utils.get_pg_bin() == mock_v16 / "bin"

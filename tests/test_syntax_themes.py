@@ -78,8 +78,8 @@ def test_get_random_theme_string_seed_hashing():
     (0, 0, 0, (0, 0, 0)),          # Black
     (60, 0.5, 0.25, (96, 96, 32)), # Dark Yellow
 ])
-def test_hsl_to_rgb(h, s, l, expected_rgb):
-    assert syntax_themes.hsl_to_rgb(h, s, l) == expected_rgb
+def test_hsl_to_rgb(h, s, lightness, expected_rgb):
+    assert syntax_themes.hsl_to_rgb(h, s, lightness) == expected_rgb
 
 def test_rgb_to_hex():
     assert syntax_themes.rgb_to_hex((255, 10, 128)) == "#ff0a80"

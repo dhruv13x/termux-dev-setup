@@ -127,7 +127,6 @@ class RedisInstaller:
         self.version = version
 
     def install_packages(self) -> bool:
-        pkg_name = "redis-server"
         if self.version:
             # Try to install version if available, but usually redis is just redis-server in apt.
             # We might check if redis-server=<version> works.

@@ -1,6 +1,6 @@
 import pytest
 import subprocess
-from unittest.mock import patch, call
+from unittest.mock import patch
 from termux_dev_setup.utils.banner import print_logo
 from termux_dev_setup.utils.lock import process_lock
 from termux_dev_setup.utils.shell import run_command, check_command

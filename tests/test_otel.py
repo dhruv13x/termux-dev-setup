@@ -3,8 +3,6 @@ from unittest.mock import patch, MagicMock, mock_open
 from termux_dev_setup import otel
 from termux_dev_setup.otel import OtelService, manage_otel
 import os
-import shutil
-from pathlib import Path
 
 @pytest.fixture
 def mock_env(monkeypatch, tmp_path):
